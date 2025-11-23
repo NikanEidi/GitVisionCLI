@@ -89,11 +89,11 @@ create github pr "New feature"
 ┌─────────────────────────────────┬──────────────────────────────────┐
 │         AI CONSOLE              │      WORKSPACE PANEL             │
 ├─────────────────────────────────┼──────────────────────────────────┤
-│  💬 Chat with AI                │  📁 File Tree Browser            │
-│  🔧 Tool execution logs         │  ✏️  Code Editor (line numbers)  │
-│  📊 Status updates              │  📊 Git Graph Visualization      │
-│  🎨 Neon-themed interface       │  📄 Markdown Renderer            │
-│  ⚡ Real-time streaming         │  📚 Command Reference            │
+│  💬 Chat with AI                │  📁 File Tree Browser             
+│  🔧 Tool execution logs         │  ✏️  Code Editor (line numbers)   │
+│  📊 Status updates               │  📊 Git Graph Visualization       │
+│  🎨 Neon-themed interface        │  📄 Markdown Renderer             │
+│  ⚡ Real-time streaming          │  📚 Command Reference              
 └─────────────────────────────────┴──────────────────────────────────┘
 ```
 
@@ -503,7 +503,7 @@ If you find GitVisionCLI useful, please ⭐ star the repo!
 [![Made with Python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Terminal Rules](https://img.shields.io/badge/Terminal-Rules-green.svg)](https://github.com)
 
-**[Documentation](docs/) • [Report Bug](https://github.com/YOUR_USERNAME/GitVisionCLI/issues) • [Request Feature](https://github.com/YOUR_USERNAME/GitVisionCLI/issues)**
+**[Documentation](docs/) • [Report Bug](https://github.com/NikanEidi/GitVisionCLI/issues) • [Request Feature](https://github.com/NikanEidi/GitVisionCLI/issues)**
 
 ---
 
