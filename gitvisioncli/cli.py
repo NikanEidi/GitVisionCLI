@@ -465,8 +465,7 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                 fs_watcher.check_once()
 
             # Render UI with current state (no "processing" yet)
-            _render_ui(renderer, conversation, engine)
-
+            
             # --- 2. GET INPUT ---
             if renderer:
                 _move_cursor_to_input_bar()
