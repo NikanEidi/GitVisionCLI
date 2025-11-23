@@ -129,20 +129,34 @@ class NaturalLanguageActionEngine:
             r"\b(?:rename|mv)\s+(?:folder|directory|dir)\s+(?P<old>[^\s]+)\s+(?:to|as)\s+(?P<new>[^\s]+)\b", re.IGNORECASE
         )
         
-        # Git operations
-        self._git_init_re = re.compile(r"\bgit\s+init\b", re.IGNORECASE)
+        # Git operations - comprehensive natural language support
+        # Git init - support "initialize git", "init git", "git init", "set up git"
+        self._git_init_re = re.compile(
+            r"\b(?:git\s+init|initialize\s+git|init\s+git|set\s+up\s+git|start\s+git\s+repository|create\s+git\s+repo)\b", 
+            re.IGNORECASE
+        )
         # CRITICAL FIX: Require explicit "git" prefix for status/log to avoid false positives
         # from common English words like "What's the status?" or "check the log file"
         self._git_status_re = re.compile(r"\bgit\s+status\b", re.IGNORECASE)
         self._git_log_re = re.compile(r"\bgit\s+log\b", re.IGNORECASE)
+        # Git add - support "add files", "stage files", "add all", "stage all", "add everything"
         self._git_add_re = re.compile(
-            r"\b(?:git\s+)?add\s+(?P<path>\.|all|[^\s]+)\b", re.IGNORECASE
+            r"\b(?:git\s+)?(?:add|stage)\s+(?P<path>\.|all|everything|files?|changes?|[^\s]+)\b", 
+            re.IGNORECASE
         )
+        # Git commit - support "commit changes", "commit with message", "save changes", "commit all"
         self._git_commit_re = re.compile(
-            r"\b(?:git\s+)?commit\s+(?:all\s+)?(?:with\s+)?message\s+['\"](?P<msg>[^'\"]+)['\"]", re.IGNORECASE
+            r"\b(?:git\s+)?(?:commit|save\s+changes)\s+(?:all\s+)?(?:with\s+)?(?:message\s+)?['\"](?P<msg>[^'\"]+)['\"]", 
+            re.IGNORECASE
         )
         self._git_commit_simple_re = re.compile(
-            r"\b(?:git\s+)?commit\s+(?:-m\s+)?['\"](?P<msg>[^'\"]+)['\"]", re.IGNORECASE
+            r"\b(?:git\s+)?(?:commit|save\s+changes)\s+(?:-m\s+)?['\"](?P<msg>[^'\"]+)['\"]", 
+            re.IGNORECASE
+        )
+        # Git commit without message - support "commit changes", "commit all"
+        self._git_commit_no_msg_re = re.compile(
+            r"\b(?:git\s+)?(?:commit|save)\s+(?:all\s+)?(?:changes?|files?)?\b(?!\s+['\"])", 
+            re.IGNORECASE
         )
         self._git_branch_re = re.compile(
             r"\b(?:git\s+)?(?:create\s+)?(?:new\s+)?branch\s+(?P<name>[^\s]+)\b", re.IGNORECASE
@@ -153,11 +167,15 @@ class NaturalLanguageActionEngine:
         self._git_merge_re = re.compile(
             r"\b(?:git\s+)?merge\s+(?:branch\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
         )
+        # Git push - support "push", "push all files", "push to github", "push everything", "upload to github"
         self._git_push_re = re.compile(
-            r"\b(?:git\s+)?push\s+(?:-u\s+)?(?:origin\s+)?(?P<branch>[^\s]*)\b", re.IGNORECASE
+            r"\b(?:git\s+)?(?:push|upload)\s*(?:all\s+)?(?:files?\s+and\s+folders?|everything|changes?)?\s*(?:to\s+(?:github|origin|remote))?\s*(?:-u\s+)?(?:origin\s+)?(?P<branch>[^\s]*)\b", 
+            re.IGNORECASE
         )
+        # Git pull - support "pull changes", "sync from github", "get latest"
         self._git_pull_re = re.compile(
-            r"\b(?:git\s+)?pull\s+(?:origin\s+)?(?P<branch>[^\s]*)\b", re.IGNORECASE
+            r"\b(?:git\s+)?(?:pull|sync|get\s+latest)\s+(?:from\s+(?:github|origin|remote))?\s*(?:origin\s+)?(?P<branch>[^\s]*)\b", 
+            re.IGNORECASE
         )
         self._git_remote_re = re.compile(
             r"\b(?:git\s+)?remote\s+add\s+(?P<name>[^\s]+)\s+(?P<url>[^\s]+)\b", re.IGNORECASE
@@ -170,9 +188,17 @@ class NaturalLanguageActionEngine:
             r"\bgit\s+graph\b", re.IGNORECASE
         )
         
-        # GitHub operations
+        # GitHub operations - comprehensive natural language support
+        # Support: "create private repository call it demo", "create github repo named demo private", 
+        # "make a private repo called demo", "create repo demo private"
         self._github_repo_re = re.compile(
-            r"\b(?:create\s+)?(?:github\s+)?(?:repo|repository)\s+(?:named\s+)?(?P<name>[^\s]+)\s+(?P<private>private|public)?\b", re.IGNORECASE
+            r"\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\s+(?P<private>private|public)?\b", 
+            re.IGNORECASE
+        )
+        # Also support: "create private repository demo", "create demo repository private"
+        self._github_repo_alt_re = re.compile(
+            r"\b(?:create|make)\s+(?:a\s+)?(?P<private>private|public)\s+(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b", 
+            re.IGNORECASE
         )
         self._github_issue_re = re.compile(
             r"\b(?:create\s+)?(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]\s+(?:with\s+)?body\s+['\"](?P<body>[^'\"]+)['\"]", re.IGNORECASE
@@ -577,7 +603,8 @@ class NaturalLanguageActionEngine:
         match = self._git_add_re.search(text)
         if match:
             path = match.group("path")
-            if path in (".", "all"):
+            # Normalize "all", "everything", "files", "changes" to "." for staging all
+            if path.lower() in (".", "all", "everything", "files", "file", "changes", "change"):
                 path = "."
             return ActionJSON(
                 type="GitAdd",
@@ -591,6 +618,13 @@ class NaturalLanguageActionEngine:
             return ActionJSON(
                 type="GitCommit",
                 params={"message": message}
+            )
+        
+        # Git commit without message - use default message
+        if self._git_commit_no_msg_re.search(text):
+            return ActionJSON(
+                type="GitCommit",
+                params={"message": "Update files"}
             )
         
         # Git branch
@@ -740,16 +774,17 @@ class NaturalLanguageActionEngine:
         # GITHUB OPERATIONS
         # ============================================================
         
-        # Create GitHub repo
-        match = self._github_repo_re.search(text)
+        # Create GitHub repo - try both patterns
+        match = self._github_repo_re.search(text) or self._github_repo_alt_re.search(text)
         if match:
             name = match.group("name")
-            private = match.group("private") and match.group("private").lower() == "private"
+            private_str = match.group("private")
+            is_private = private_str and private_str.lower() == "private"
             return ActionJSON(
                 type="GitHubCreateRepo",
                 params={
                     "name": name,
-                    "private": private,
+                    "private": is_private,
                 }
             )
         
