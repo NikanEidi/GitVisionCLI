@@ -101,7 +101,15 @@ class NaturalLanguageActionEngine:
             r"\b(?:copy|cp)\s+(?:file\s+)?(?P<path>[^\s]+)\s+(?:to|as)\s+(?P<new>[^\s]+)\b", re.IGNORECASE
         )
         self._open_file_re = re.compile(
-            r"\b(?:open|edit|nano|code)\s+(?:file\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:open|edit|nano|code|view)\s+(?:file\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
+        )
+        
+        # Search operations
+        self._search_files_re = re.compile(
+            r"\b(?:search|find|grep|locate)\s+(?:for|files?|text)?\s*(?P<pattern>[^\s]+)\b", re.IGNORECASE
+        )
+        self._find_files_re = re.compile(
+            r"\b(?:find|locate|search\s+for)\s+(?:files?\s+)?(?:named|called|with\s+name)\s+(?P<name>[^\s]+)\b", re.IGNORECASE
         )
         
         # Folder operations
@@ -169,16 +177,35 @@ class NaturalLanguageActionEngine:
         self._github_issue_re = re.compile(
             r"\b(?:create\s+)?(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]\s+(?:with\s+)?body\s+['\"](?P<body>[^'\"]+)['\"]", re.IGNORECASE
         )
+        self._github_issue_simple_re = re.compile(
+            r"\b(?:create\s+)?(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
+        )
         self._github_pr_re = re.compile(
             r"\b(?:create\s+)?(?:github\s+)?(?:pr|pull\s+request)\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
         )
         
         # Change directory operations
         self._cd_re = re.compile(
-            r"\b(?:cd|change\s+directory|go\s+to|go\s+into|enter)\s+(?:the\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:cd|change\s+directory|go\s+to|go\s+into|enter|navigate\s+to)\s+(?:the\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
         )
         self._cd_contextual_re = re.compile(
             r"\b(?:create|make)\s+(?P<name>[^\s/]+)\s+(?:folder|directory)\s+and\s+(?:go\s+to|cd|enter)\s+(?:it|there|the\s+(?:folder|directory))\b", re.IGNORECASE
+        )
+        self._cd_up_re = re.compile(
+            r"\b(?:cd|go)\s+\.\.\b", re.IGNORECASE
+        )
+        
+        # List directory operations (natural language)
+        self._list_dir_re = re.compile(
+            r"\b(?:list|show|display|ls)\s+(?:files|contents|directory|folder|dir)\s+(?:in|of|at)?\s*(?P<path>[^\s]*)\b", re.IGNORECASE
+        )
+        
+        # Debugging/testing commands
+        self._debug_re = re.compile(
+            r"\b(?:debug|test|run|execute)\s+(?:file|script|program|code)\s+(?P<path>[^\s]+)\b", re.IGNORECASE
+        )
+        self._run_script_re = re.compile(
+            r"\b(?:run|execute|launch)\s+(?P<path>[^\s]+)\b", re.IGNORECASE
         )
         
         # Broken grammar patterns (fix automatically)
@@ -512,6 +539,24 @@ class NaturalLanguageActionEngine:
                 params={"path": path}
             )
         
+        # Search files
+        match = self._search_files_re.search(text)
+        if match:
+            pattern = match.group("pattern")
+            return ActionJSON(
+                type="RunShellCommand",
+                params={"command": f"grep -r '{pattern}' ."}
+            )
+        
+        # Find files by name
+        match = self._find_files_re.search(text)
+        if match:
+            name = match.group("name")
+            return ActionJSON(
+                type="RunShellCommand",
+                params={"command": f"find . -name '{name}'"}
+            )
+        
         # ============================================================
         # GIT OPERATIONS
         # ============================================================
@@ -648,6 +693,49 @@ class NaturalLanguageActionEngine:
                 params={"path": path}
             )
         
+        # Change directory up (cd ..)
+        if self._cd_up_re.search(text):
+            return ActionJSON(
+                type="ChangeDirectory",
+                params={"path": ".."}
+            )
+        
+        # List directory (natural language)
+        match = self._list_dir_re.search(text)
+        if match:
+            path = match.group("path") or "."
+            return ActionJSON(
+                type="RunShellCommand",
+                params={"command": f"ls {path}"}
+            )
+        
+        # Debug/run script
+        match = self._debug_re.search(text) or self._run_script_re.search(text)
+        if match:
+            path = match.group("path")
+            # Determine script type and run appropriately
+            if path.endswith((".py", ".py3")):
+                return ActionJSON(
+                    type="RunShellCommand",
+                    params={"command": f"python3 {path}"}
+                )
+            elif path.endswith((".js", ".mjs")):
+                return ActionJSON(
+                    type="RunShellCommand",
+                    params={"command": f"node {path}"}
+                )
+            elif path.endswith((".sh", ".bash")):
+                return ActionJSON(
+                    type="RunShellCommand",
+                    params={"command": f"bash {path}"}
+                )
+            else:
+                # Generic execution
+                return ActionJSON(
+                    type="RunShellCommand",
+                    params={"command": path}
+                )
+        
         # ============================================================
         # GITHUB OPERATIONS
         # ============================================================
@@ -666,10 +754,10 @@ class NaturalLanguageActionEngine:
             )
         
         # Create GitHub issue
-        match = self._github_issue_re.search(text)
+        match = self._github_issue_re.search(text) or self._github_issue_simple_re.search(text)
         if match:
             title = match.group("title")
-            body = match.group("body")
+            body = match.group("body") if "body" in match.groupdict() else ""
             return ActionJSON(
                 type="GitHubCreateIssue",
                 params={

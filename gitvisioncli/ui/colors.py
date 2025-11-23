@@ -11,26 +11,41 @@ from typing import List, Tuple
 # NEON CYBERPUNK PALETTE
 # ═══════════════════════════════════════════════════════════════
 
-# Purple Spectrum (primary brand line)
+# Purple Spectrum (primary brand line) - ENHANCED VIBRANCY & FIXED ANSI
 DEEP_VIOLET = "\033[38;5;54m"      # Deep background accent
-NEON_PURPLE = "\033[38;5;165m"     # Primary brand / borders
+NEON_PURPLE = "\033[38;5;165m"     # Primary brand / borders - ULTRA-VIBRANT
 BRIGHT_MAGENTA = "\033[38;5;201m"  # High-energy highlights
 LIGHT_PURPLE = "\033[38;5;141m"    # Softer accent for gradients
+ULTRA_PURPLE = "\033[38;5;129m"    # Ultra-vibrant purple
+PINK_NEON = "\033[38;5;213m"       # Bright pink accent
+# Enhanced NEON_PURPLE variants for maximum visibility
+NEON_PURPLE_BOLD = "\033[1;38;5;165m"  # Bold neon purple
+NEON_PURPLE_GLOW = "\033[1;38;5;165m"   # Glowing neon purple
 
-# Cyan Accents (secondary brand line)
+# Cyan Accents (secondary brand line) - ENHANCED VIBRANCY
 ELECTRIC_CYAN = "\033[38;5;51m"    # Primary accent / links
 DEEP_CYAN = "\033[38;5;39m"        # Secondary accent / user borders
 TEAL = "\033[38;5;45m"             # Ambient glow / matrix effects
+BRIGHT_CYAN = "\033[38;5;87m"      # Ultra-bright cyan
+AQUA = "\033[38;5;122m"            # Aqua green-cyan blend
 
-# Grayscale (for scanlines / muted text)
-DARK_GRAY = "\033[38;5;236m"       # Frame shading / scanlines
-MID_GRAY = "\033[38;5;244m"        # Muted labels
-LIGHT_GRAY = "\033[38;5;250m"      # Subtle highlights
+# Grayscale (for scanlines / muted text) - OPTIMIZED FOR VISIBILITY
+DARK_GRAY = "\033[38;5;240m"       # Frame shading / scanlines (brighter)
+MID_GRAY = "\033[38;5;250m"        # Muted labels (much brighter, almost white)
+LIGHT_GRAY = "\033[38;5;252m"      # Subtle highlights (very bright)
 WHITE = "\033[38;5;15m"            # Pure white text
+OFF_WHITE = "\033[38;5;255m"       # Soft white for backgrounds
 
-# Glitch Colors (alerts / matrix)
+# Glitch Colors (alerts / matrix) - ENHANCED
 GLITCH_RED = "\033[38;5;196m"      # Errors / critical alerts
 GLITCH_GREEN = "\033[38;5;46m"     # Matrix-style output / success pulses
+NEON_YELLOW = "\033[38;5;226m"     # Bright yellow for warnings
+NEON_ORANGE = "\033[38;5;208m"     # Orange accent
+
+# Background Colors (for contrast)
+BG_DARK = "\033[48;5;235m"         # Dark background
+BG_DARKER = "\033[48;5;232m"       # Very dark background
+BG_PURPLE = "\033[48;5;54m"        # Purple background tint
 
 # Backwards-compat alias (used by cli.py)
 RED = GLITCH_RED
@@ -54,14 +69,17 @@ RESET = "\033[0m"
 # SEMANTIC COLOR ROLES
 # ═══════════════════════════════════════════════════════════════
 
-# High-level semantic aliases (for consistent styling)
+# High-level semantic aliases (for consistent styling) - ENHANCED
 PRIMARY_FG = NEON_PURPLE          # Brand / main borders
 ACCENT_FG = ELECTRIC_CYAN         # Headings / active labels
 ACCENT_ALT_FG = BRIGHT_MAGENTA    # Secondary accent (AI, model names)
+ACCENT_ULTRA_FG = BRIGHT_CYAN     # Ultra-bright accents
+ACCENT_WARM_FG = PINK_NEON        # Warm accent for highlights
 MUTED_FG = MID_GRAY               # Hints / secondary text
 MUTED_DARK_FG = DARK_GRAY         # Frames / scanlines / separators
 ERROR_FG = GLITCH_RED             # Errors / warnings
 SUCCESS_FG = GLITCH_GREEN         # Success indicators
+WARNING_FG = NEON_YELLOW          # Warnings / notices
 
 # Chat / console roles (used by ChatBox and system messages)
 CHAT_BORDER_USER = DEEP_CYAN

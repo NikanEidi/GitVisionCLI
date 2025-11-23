@@ -27,6 +27,7 @@ from gitvisioncli.ui.colors import (
     GLITCH_GREEN,
     GLITCH_RED,
     ELECTRIC_CYAN,
+    BRIGHT_MAGENTA,
 )
 
 logger = logging.getLogger(__name__)
@@ -365,9 +366,9 @@ class EditorPanel:
                 if self.width > 10 and _visible_len(highlighted) > max_content_width:
                     # Truncate using ANSI-aware function to preserve escape sequences
                     highlighted = _truncate_ansi_aware(highlighted, max_content_width) + f"{DIM}{MID_GRAY}{RESET}"
-                # Enhanced line number styling
-                ln_colored = f"{DIM}{DARK_GRAY}{ln}{RESET}"
-                separator = f"{DIM}{DARK_GRAY}│{RESET}"
+                # Ultra-vibrant line number styling with glow
+                ln_colored = f"{BOLD}{ELECTRIC_CYAN}{ln}{RESET}"
+                separator = f"{BOLD}{BRIGHT_MAGENTA}│{RESET}"
                 lines.append(f" {ln_colored} {separator} {highlighted}")
 
         # Enhanced footer with better visual design
@@ -390,7 +391,7 @@ class EditorPanel:
             # File might not exist yet; ignore
             pass
 
-        footer = f" {DIM}{DARK_GRAY}│{RESET} ".join(footer_parts)
+        footer = f" {BOLD}{BRIGHT_MAGENTA}│{RESET} ".join(footer_parts)
         lines.append(f" {footer}")
         return lines
 

@@ -46,12 +46,13 @@ class GitGraphPanel:
         return trimmed
 
     def _header(self) -> List[str]:
-        # Enhanced header with better visual design
-        title = f"{BOLD}{NEON_PURPLE}╔═ GIT COMMIT GRAPH ═╗{RESET}"
+        # Ultra-vibrant header with gradient effect
+        title = f"{BOLD}{ELECTRIC_CYAN}╔═══{RESET}{BOLD}{NEON_PURPLE} GIT COMMIT GRAPH {RESET}{BOLD}{ELECTRIC_CYAN}═══╗{RESET}"
         raw_len = len(self._strip_ansi(title))
         pad = max(0, (self.width - raw_len) // 2)
         header_line = " " * pad + title
-        separator = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        # Enhanced separator with gradient
+        separator = f"{BOLD}{BRIGHT_MAGENTA}{'═' * min(self.width - 4, 50)}{RESET}"
         sep_pad = max(0, (self.width - len(self._strip_ansi(separator))) // 2)
         return ["", header_line, " " * sep_pad + separator, ""]
 
@@ -133,12 +134,12 @@ class GitGraphPanel:
             lines.append(self._fit_line(pretty))
 
         lines.append("")
-        # Enhanced footer with better visual design
-        footer_sep = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        # Ultra-vibrant footer with gradient effect
+        footer_sep = f"{BOLD}{BRIGHT_MAGENTA}{'═' * min(self.width - 4, 50)}{RESET}"
         sep_pad = max(0, (self.width - len(self._strip_ansi(footer_sep))) // 2)
         lines.append(" " * sep_pad + footer_sep)
         lines.append("")
-        info_text = f"{DIM}{MID_GRAY}Showing up to 50 recent commits across all branches.{RESET}"
+        info_text = f"{BOLD}{ELECTRIC_CYAN}╚═══{RESET} {MID_GRAY}Showing up to 50 recent commits across all branches.{RESET}"
         info_pad = max(0, (self.width - len(self._strip_ansi(info_text))) // 2)
         lines.append(" " * info_pad + info_text)
         return lines

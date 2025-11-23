@@ -37,8 +37,9 @@ export OPENAI_API_KEY="sk-..."
 # Or Claude
 export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Or Gemini
+# Or Gemini (get key from https://makersuite.google.com/app/apikey)
 export GOOGLE_API_KEY="..."
+# Then switch to Gemini: :set-ai gemini-1.5-pro
 
 # Or use Ollama (local, free - no API key needed)
 # Install: https://ollama.com

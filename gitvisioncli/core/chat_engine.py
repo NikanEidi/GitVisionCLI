@@ -167,7 +167,10 @@ class ChatEngine:
         # Core components
         self.ai: Optional[AIClient] = None
         if self._openai_api_key:
-            self.ai = AIClient(api_key=self._openai_api_key, default_model=self.model)
+            # AIClient is for OpenAI only - always use an OpenAI-compatible model
+            # Use the current model only if it's an OpenAI model, otherwise use default
+            openai_model = self.model if self.provider == "openai" else "gpt-4o-mini"
+            self.ai = AIClient(api_key=self._openai_api_key, default_model=openai_model)
 
         self.executor = AIActionExecutor(
             base_dir=base_dir,
@@ -181,8 +184,10 @@ class ChatEngine:
         self._previous_engine_key: Optional[str] = None
 
         # Planner uses OpenAI-compatible tools only when an OpenAI key is present.
+        # CRITICAL: ActionPlanner must use OpenAI model, not the current provider's model
+        # (e.g., if provider is Gemini, planner still needs to use gpt-4o-mini for OpenAI API)
         self.planner: Optional[ActionPlanner] = (
-            ActionPlanner(self.ai, model=self.model) if self.ai else None
+            ActionPlanner(self.ai, model=openai_model) if self.ai else None
         )
         self.fs_watcher = None
 
@@ -751,9 +756,12 @@ simple natural language commands may already be handled by the direct engine."""
         provider_norm = (provider or "openai").lower()
 
         if provider_norm == "gemini":
+            # Strip "models/" prefix if present (SDK expects just the model name)
+            if lower.startswith("models/"):
+                name = name[7:]  # Remove "models/" prefix
+                lower = name.lower()
             if not (
                 lower.startswith("gemini-")
-                or lower.startswith("models/gemini-")
                 or lower == "gemini-pro"
             ):
                 return "gemini-1.5-pro"
@@ -1198,8 +1206,10 @@ simple natural language commands may already be handled by the direct engine."""
             return
 
         # ----------------------------------------------------
-        # NON-OPENAI PROVIDERS WITH OPTIONAL TOOL SUPPORT
+        # NON-OPENAI PROVIDERS WITH NATIVE STREAMING + TOOLS
         # ----------------------------------------------------
+        # All providers now support native streaming with tool detection
+        
         # 1) If an OpenAI client is available, use it to detect and
         # execute tool calls based on the same messages, but do NOT
         # surface any OpenAI text back to the user. This ensures that
@@ -1215,7 +1225,7 @@ simple natural language commands may already be handled by the direct engine."""
         await self._auto_prune_if_needed()
 
         # Rebuild messages from the updated context and get the final
-        # assistant text from the active provider.
+        # assistant text from the active provider using NATIVE STREAMING.
         messages_for_provider = (
             self.context.get_openai_messages()
             if include_context
@@ -1228,79 +1238,179 @@ simple natural language commands may already be handled by the direct engine."""
         # Check if we should stream to editor panel
         editor_panel = self._editor_panel_ref
         
+        # Track whether finish_stream() has been called to prevent double-calling
+        finish_stream_called = False
+        
+        # Use native streaming for all providers
+        provider = (self.provider or "openai").lower()
+        assistant_text = ""
+        
         try:
-            reply_text = await self._complete_via_provider(
-                messages_for_provider,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
+            if provider == "gemini":
+                async for chunk in self._stream_gemini(
+                    messages_for_provider,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                ):
+                    if chunk:
+                        assistant_text += chunk
+                        # Stream to editor if available
+                        if editor_panel and hasattr(editor_panel, 'write_stream'):
+                            try:
+                                editor_panel.write_stream(chunk)
+                            except Exception:
+                                pass
+                        yield chunk
+            elif provider == "claude":
+                async for chunk in self._stream_claude(
+                    messages_for_provider,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                ):
+                    if chunk:
+                        assistant_text += chunk
+                        # Stream to editor if available
+                        if editor_panel and hasattr(editor_panel, 'write_stream'):
+                            try:
+                                editor_panel.write_stream(chunk)
+                            except Exception:
+                                pass
+                        yield chunk
+            elif provider == "ollama":
+                async for chunk in self._stream_ollama(
+                    messages_for_provider,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                ):
+                    if chunk:
+                        assistant_text += chunk
+                        # Stream to editor if available
+                        if editor_panel and hasattr(editor_panel, 'write_stream'):
+                            try:
+                                editor_panel.write_stream(chunk)
+                            except Exception:
+                                pass
+                        yield chunk
+            else:
+                # Fallback to non-streaming for unknown providers
+                reply_text = await self._complete_via_provider(
+                    messages_for_provider,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                )
+                if reply_text:
+                    assistant_text = reply_text
+                    # Stream character by character for live typing effect
+                    if reply_text and editor_panel and hasattr(editor_panel, 'write_stream'):
+                        try:
+                            streamed_count = 0
+                            for char in reply_text:
+                                editor_panel.write_stream(char)
+                                yield char
+                                streamed_count += 1
+                            editor_panel.finish_stream()
+                            finish_stream_called = True  # Mark as called to prevent double-calling
+                        except Exception as e:
+                            logger.debug(f"Editor streaming failed: {e}")
+                            # CRITICAL FIX: Only yield remaining text to prevent duplicates
+                            # If we already streamed some characters, only yield the remainder
+                            if streamed_count < len(reply_text):
+                                remaining_text = reply_text[streamed_count:]
+                                yield remaining_text
+                            # CRITICAL FIX: Set finish_stream_called even on exception
+                            # to prevent finally block from calling it again
+                            try:
+                                if hasattr(editor_panel, 'finish_stream'):
+                                    editor_panel.finish_stream()
+                            except Exception:
+                                pass  # If finish_stream also fails, continue anyway
+                            finally:
+                                # Always mark as called, even if finish_stream() failed
+                                finish_stream_called = True
+                    else:
+                        yield reply_text
         except ProviderNotConfiguredError as e:
             msg = f"AI Error: {str(e)}"
-            self.context.add_message("assistant", msg)
+            # CRITICAL FIX: Don't add error messages to context - they pollute conversation history
+            # Error messages should be displayed but not stored as legitimate assistant responses
+            logger.warning(f"Provider not configured error not added to context: {msg[:100]}")
             yield msg
-            return
+            return  # CRITICAL: Prevent duplicate error messages
         except Exception as e:
+            # Log the full error for debugging
+            logger.error(f"{self.provider} provider exception: {e}", exc_info=True)
             msg = f"AI Error: {self.provider} provider failed: {e}"
-            self.context.add_message("assistant", msg)
+            # CRITICAL FIX: Don't add error messages to context - they pollute conversation history
+            # Error messages should be displayed but not stored as legitimate assistant responses
+            logger.warning(f"Provider exception error not added to context: {msg[:100]}")
             yield msg
-            return
+            return  # CRITICAL: Prevent duplicate error messages
+        finally:
+            # CRITICAL: Always finish streaming to editor, even if exceptions occurred
+            # This prevents the editor panel from being left in an unfinalized state
+            # Only call finish_stream() if it hasn't already been called (e.g., in fallback path)
+            if editor_panel and hasattr(editor_panel, 'finish_stream') and not finish_stream_called:
+                try:
+                    editor_panel.finish_stream()
+                except Exception:
+                    pass
 
-        if not reply_text:
+        if not assistant_text:
             # Provide a more actionable message for "empty" completions
-            # from non-OpenAI providers, which often indicate that the
-            # underlying model is unavailable, misconfigured, or returned
-            # an empty response.
             provider_name = (self.provider or "unknown").lower()
             hint = ""
             if provider_name == "ollama":
-                hint = " (is the Ollama daemon running and the model pulled?)"
+                hint = " (is the Ollama daemon running and the model pulled? Try: ollama pull <model>)"
+            elif provider_name == "gemini":
+                hint = " (check API key, model name, and quota. Try: :set-ai gemini-1.5-pro)"
+            elif provider_name == "claude":
+                hint = " (check API key, model name, and quota. Try: :set-ai claude-3-5-sonnet)"
             msg = f"AI Error: {provider_name} provider returned no content{hint}."
-            self.context.add_message("assistant", msg)
+            # CRITICAL FIX: Don't add error messages to context - they pollute conversation history
+            # Error messages should be displayed but not stored as legitimate assistant responses
+            logger.warning(f"Empty content error not added to context: {msg[:100]}")
             yield msg
             return
 
-        # Record the assistant reply in context first.
-        self.context.add_message("assistant", reply_text)
-        
-        # Stream reply_text to editor if available (for live typing effect)
-        if reply_text and editor_panel and hasattr(editor_panel, 'write_stream'):
-            try:
-                # Stream character by character for live typing effect
-                # Track position to handle partial failures
-                streamed_count = 0
-                for char in reply_text:
-                    editor_panel.write_stream(char)
-                    yield char
-                    streamed_count += 1
-                editor_panel.finish_stream()
-            except Exception as e:
-                logger.debug(f"Editor streaming failed: {e}")
-                # CRITICAL FIX: If streaming failed partway through, we've only yielded
-                # chars up to the failure point. Yield the remaining text to ensure
-                # complete delivery. This prevents truncated output when write_stream()
-                # raises an exception mid-stream.
-                if streamed_count < len(reply_text):
-                    remaining_text = reply_text[streamed_count:]
-                    yield remaining_text
-                # Try to finish the stream if possible
-                try:
-                    if hasattr(editor_panel, 'finish_stream'):
-                        editor_panel.finish_stream()
-                except Exception:
-                    pass
-        else:
-            # Normal yield if no editor or streaming not available
-            yield reply_text
+        # Record the assistant reply in context
+        # CRITICAL FIX: Don't add error messages to conversation history
+        # Error messages from streaming methods (e.g., "Gemini Error: ...") should not
+        # be stored as legitimate assistant responses, as they pollute conversation history
+        # NOTE: Errors can appear anywhere in the text (e.g., after successful streaming),
+        # so we check if the text CONTAINS error patterns, not just starts with them
+        if assistant_text:
+            # Check if the text contains error patterns anywhere (not just at start)
+            # This handles cases where streaming succeeds initially but then errors occur
+            error_patterns = [
+                "Gemini Error:",
+                "Claude Error:",
+                "Ollama Error:",
+                "AI Error:",
+            ]
+            is_error_message = any(
+                pattern in assistant_text 
+                for pattern in error_patterns
+            )
+            
+            if not is_error_message:
+                # Only add legitimate assistant responses to context
+                self.context.add_message("assistant", assistant_text)
+            else:
+                # Log error messages but don't add them to conversation history
+                # Extract just the error part if there's mixed content
+                error_part = None
+                for pattern in error_patterns:
+                    if pattern in assistant_text:
+                        idx = assistant_text.find(pattern)
+                        error_part = assistant_text[idx:].strip()
+                        break
+                logger.warning(f"Error message from streaming method not added to context: {error_part[:100] if error_part else assistant_text[:100]}")
 
-        # For non-OpenAI providers (Gemini, Claude, Ollama, etc.) that do
-        # NOT have an OpenAI client configured, attempt a local
-        # instruction-execution pass by parsing any JSON action blocks
-        # from the plain-text response and routing them through the same
-        # execute_action pipeline. When an OpenAI client exists, tool
-        # calls are already handled via _run_openai_tools_for_messages()
-        # and we must not execute a second, duplicate local pass.
+        # For non-OpenAI providers that do NOT have an OpenAI client configured,
+        # attempt a local instruction-execution pass by parsing any JSON action blocks
+        # from the plain-text response and routing them through the same execute_action pipeline.
         if (self.provider or "").lower() != "openai" and self.ai is None:
-            logs = self._run_local_instruction_pass(reply_text)
+            logs = self._run_local_instruction_pass(assistant_text)
             for chunk in logs:
                 yield chunk
 
@@ -1932,10 +2042,13 @@ Please provide edit instructions."""
         Claude) to share the same execute_action tool pipeline.
         """
         try:
+            # Use OpenAI model for tool detection, not the current provider's model
+            openai_model = "gpt-4o-mini" if self.provider != "openai" else self.model
             resp = await self.ai.complete_with_tools(
                 messages=messages,
                 tools=[self.EXECUTE_ACTION_TOOL],
                 tool_choice="auto",
+                model=openai_model,  # Explicitly use OpenAI model for tool detection
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
             )
@@ -2547,8 +2660,18 @@ Please provide edit instructions."""
                     return text
                 return str(text)
             except Exception as e:
-                logger.error(f"Ollama completion failed: {e}")
-                return ""
+                # Log full error details for debugging
+                logger.error(f"Ollama completion failed: {e}", exc_info=True)
+                # Return error message instead of empty string so user sees what went wrong
+                error_msg = str(e)
+                if "404" in error_msg or "not found" in error_msg.lower():
+                    return f"Ollama Error: Model '{self.model}' not found. Pull it with: ollama pull {self.model}"
+                elif "connection" in error_msg.lower() or "refused" in error_msg.lower():
+                    return f"Ollama Error: Cannot connect to Ollama at {base_url}. Is the Ollama daemon running?"
+                elif "timeout" in error_msg.lower():
+                    return f"Ollama Error: Request timed out. The model might be too slow or the daemon is overloaded."
+                else:
+                    return f"Ollama Error: {error_msg}"
 
         return await asyncio.to_thread(_call)
 
@@ -2572,21 +2695,44 @@ Please provide edit instructions."""
             )
 
         def _call() -> str:
+            # Initialize model_name before try block to ensure it's always defined
+            model_name = self._normalize_model_for_provider("gemini", self.model)
             try:
                 genai.configure(api_key=self._gemini_api_key)
-                model_name = self._normalize_model_for_provider("gemini", self.model)
                 # Remove "models/" prefix if present (SDK expects just the model name)
                 # Use case-insensitive check for consistency with rest of codebase
                 model_lower = model_name.lower()
                 if model_lower.startswith("models/"):
                     model_name = model_name[7:]
                     model_lower = model_name.lower()  # Recalculate after prefix removal
-                # Ensure valid Gemini model name (case-insensitive check)
+                # Ensure valid Gemini model name
+                # CRITICAL FIX: Gemini SDK requires lowercase model names
+                # Normalize to lowercase for API compatibility
                 if not model_lower.startswith("gemini-"):
                     model_name = "gemini-1.5-pro"
                 else:
-                    # Normalize to lowercase for SDK compatibility
+                    # Force lowercase for SDK compatibility (Gemini API expects lowercase)
                     model_name = model_lower
+                # Configure safety settings to be less restrictive for code/technical tasks
+                safety_settings = [
+                    {
+                        "category": "HARM_CATEGORY_HARASSMENT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                    },
+                    {
+                        "category": "HARM_CATEGORY_HATE_SPEECH",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                    },
+                    {
+                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                    },
+                    {
+                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+                    },
+                ]
+                # CRITICAL FIX: Create GenerativeModel instance before calling generate_content
                 model = genai.GenerativeModel(model_name)
                 resp = model.generate_content(
                     prompt,
@@ -2594,7 +2740,14 @@ Please provide edit instructions."""
                         "temperature": float(temperature),
                         "max_output_tokens": int(max_tokens),
                     },
+                    safety_settings=safety_settings,
                 )
+                # Check for blocked/filtered responses first
+                if hasattr(resp, "prompt_feedback"):
+                    feedback = resp.prompt_feedback
+                    if hasattr(feedback, "block_reason") and feedback.block_reason:
+                        return f"Gemini Error: Content was blocked. Reason: {feedback.block_reason}. Try rephrasing your request."
+                
                 # Primary path: newer google-generativeai exposes .text
                 text = getattr(resp, "text", None)
                 if isinstance(text, str) and text.strip():
@@ -2636,8 +2789,24 @@ Please provide edit instructions."""
                 except Exception:
                     return ""
             except Exception as e:
-                logger.error(f"Gemini completion failed: {e}")
-                return ""
+                # Log full error details for debugging
+                logger.error(f"Gemini completion failed: {e}", exc_info=True)
+                # Return error message instead of empty string so user sees what went wrong
+                error_msg = str(e)
+                if "404" in error_msg or "not found" in error_msg.lower():
+                    if "gemini-pro" in model_name.lower() and "gemini-1.5-pro" not in model_name.lower():
+                        # gemini-pro is not found, suggest gemini-1.5-pro instead
+                        return f"Gemini Error: Model 'gemini-pro' not found in v1beta API. Use 'gemini-1.5-pro' instead (type: :set-ai gemini-1.5-pro)."
+                    elif "gemini-1.5-pro" in model_name.lower():
+                        return f"Gemini Error: Model '{model_name}' not found. Possible issues:\n  1. Check API key is valid (get from https://makersuite.google.com/app/apikey)\n  2. Verify API key has access to Gemini models\n  3. Check billing/quota status\n  4. Ensure you're using a valid model name"
+                    else:
+                        return f"Gemini Error: Model '{model_name}' not found. Valid models: 'gemini-1.5-pro'. Try: :set-ai gemini-1.5-pro"
+                elif "403" in error_msg or "permission" in error_msg.lower():
+                    return f"Gemini Error: API key permission denied. Check your API key in config.json."
+                elif "429" in error_msg or "quota" in error_msg.lower():
+                    return f"Gemini Error: API quota exceeded. Try again later or check your billing."
+                else:
+                    return f"Gemini Error: {error_msg}"
 
         return await asyncio.to_thread(_call)
 
@@ -2661,14 +2830,51 @@ Please provide edit instructions."""
             )
 
         def _call() -> str:
+            # Initialize model_name before try block to ensure it's always defined
+            model_name = self._normalize_model_for_provider("claude", self.model)
             try:
                 client = anthropic.Anthropic(api_key=self._claude_api_key)
-                model_name = self._normalize_model_for_provider("claude", self.model)
+                # Claude API expects system message separately, extract it from prompt if present
+                system_msg = ""
+                user_content = prompt
+                if prompt.startswith("SYSTEM:"):
+                    parts = prompt.split("\nUSER:", 1)
+                    if len(parts) == 2:
+                        system_msg = parts[0].replace("SYSTEM:", "").strip()
+                        user_content = parts[1].strip()
+                elif prompt.startswith("USER:"):
+                    # Remove USER: prefix if no system message
+                    user_content = prompt.replace("USER:", "", 1).strip()
+                
+                # Parse multiple USER/ASSISTANT messages if present
+                messages = []
+                current_role = "user"
+                current_content = []
+                for line in user_content.split("\n"):
+                    if line.startswith("USER:"):
+                        if current_content:
+                            messages.append({"role": current_role, "content": "\n".join(current_content)})
+                        current_role = "user"
+                        current_content = [line.replace("USER:", "", 1).strip()]
+                    elif line.startswith("ASSISTANT:"):
+                        if current_content:
+                            messages.append({"role": current_role, "content": "\n".join(current_content)})
+                        current_role = "assistant"
+                        current_content = [line.replace("ASSISTANT:", "", 1).strip()]
+                    else:
+                        current_content.append(line)
+                if current_content:
+                    messages.append({"role": current_role, "content": "\n".join(current_content)})
+                
+                # Fallback if no messages parsed
+                if not messages:
+                    messages = [{"role": "user", "content": user_content}]
                 resp = client.messages.create(
                     model=model_name,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    messages=[{"role": "user", "content": prompt}],
+                    system=system_msg if system_msg else None,
+                    messages=messages,
                 )
                 parts: List[str] = []
                 for block in getattr(resp, "content", []) or []:
@@ -2681,9 +2887,324 @@ Please provide edit instructions."""
                             parts.append(t)
                 return "".join(parts)
             except Exception as e:
-                logger.error(f"Claude completion failed: {e}")
-                return "" # Ensure _call always returns a string
+                # Log full error details for debugging
+                logger.error(f"Claude completion failed: {e}", exc_info=True)
+                # Return error message instead of empty string so user sees what went wrong
+                error_msg = str(e)
+                if "404" in error_msg or "not found" in error_msg.lower():
+                    return f"Claude Error: Model '{model_name}' not found. Try 'claude-3-5-sonnet' or 'claude-3-opus'."
+                elif "403" in error_msg or "permission" in error_msg.lower() or "authentication" in error_msg.lower():
+                    return f"Claude Error: API key permission denied. Check your API key in config.json."
+                elif "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+                    return f"Claude Error: API quota/rate limit exceeded. Try again later or check your billing."
+                else:
+                    return f"Claude Error: {error_msg}"
         return await asyncio.to_thread(_call)
+
+    # --------------------------------------------------------------------------------------
+    # NATIVE STREAMING METHODS FOR ALL PROVIDERS
+    # --------------------------------------------------------------------------------------
+
+    async def _stream_gemini(
+        self,
+        messages: List[Dict[str, Any]],
+        temperature: float,
+        max_tokens: int,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Native streaming for Gemini using generate_content with stream=True.
+        """
+        if not self._gemini_api_key:
+            raise ProviderNotConfiguredError(
+                "Gemini provider selected but no API key is configured."
+            )
+
+        try:
+            import google.generativeai as genai  # type: ignore
+        except ImportError:
+            raise ProviderNotConfiguredError(
+                "Gemini provider requires the 'google-generativeai' package. "
+                "Install it with `pip install google-generativeai`."
+            )
+
+        # CRITICAL FIX: Initialize model_name before try block to prevent NameError in exception handler
+        model_name = self._normalize_model_for_provider("gemini", self.model)
+        try:
+            genai.configure(api_key=self._gemini_api_key)
+            # Remove "models/" prefix if present
+            model_lower = model_name.lower()
+            if model_lower.startswith("models/"):
+                model_name = model_name[7:]
+                model_lower = model_name.lower()
+            # Ensure valid Gemini model name
+            # CRITICAL FIX: Gemini SDK requires lowercase model names
+            # Normalize to lowercase for API compatibility
+            if not model_lower.startswith("gemini-"):
+                model_name = "gemini-1.5-pro"
+            else:
+                # Force lowercase for SDK compatibility (Gemini API expects lowercase)
+                model_name = model_lower
+            
+            model = genai.GenerativeModel(model_name)
+            safety_settings = [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            ]
+            
+            prompt = self._messages_to_prompt(messages)
+            stream = model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": float(temperature),
+                    "max_output_tokens": int(max_tokens),
+                },
+                safety_settings=safety_settings,
+                stream=True,
+            )
+            
+            for chunk in stream:
+                # Check for blocked content
+                if hasattr(chunk, "prompt_feedback"):
+                    feedback = chunk.prompt_feedback
+                    if hasattr(feedback, "block_reason") and feedback.block_reason:
+                        yield f"Gemini Error: Content was blocked. Reason: {feedback.block_reason}."
+                        return
+                
+                # Extract text from chunk
+                text = getattr(chunk, "text", None)
+                if text:
+                    yield text
+                else:
+                    # Try candidates/content/parts
+                    try:
+                        candidates = getattr(chunk, "candidates", None) or []
+                        for cand in candidates:
+                            content = getattr(cand, "content", None)
+                            parts = None
+                            if isinstance(content, list):
+                                parts = content
+                            elif hasattr(content, "parts"):
+                                parts = getattr(content, "parts")
+                            if parts:
+                                for part in parts:
+                                    pt = getattr(part, "text", None)
+                                    if pt:
+                                        yield pt
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.error(f"Gemini streaming failed: {e}", exc_info=True)
+            error_msg = str(e)
+            if "404" in error_msg or "not found" in error_msg.lower():
+                # CRITICAL FIX: Provide helpful error message with troubleshooting steps
+                if "flash" in model_name.lower():
+                    yield f"Gemini Error: Model 'gemini-1.5-flash' not available in v1beta API. Use 'gemini-1.5-pro' instead (type: :set-ai gemini-1.5-pro)."
+                elif "gemini-pro" in model_name.lower() and "gemini-1.5-pro" not in model_name.lower():
+                    # gemini-pro is not found, suggest gemini-1.5-pro instead
+                    yield f"Gemini Error: Model 'gemini-pro' not found in v1beta API. Use 'gemini-1.5-pro' instead (type: :set-ai gemini-1.5-pro)."
+                elif "gemini-1.5-pro" in model_name.lower():
+                    yield f"Gemini Error: Model '{model_name}' not found. Possible issues:\n  1. Check API key is valid (get from https://makersuite.google.com/app/apikey)\n  2. Verify API key has access to Gemini models\n  3. Check billing/quota status\n  4. Ensure you're using a valid model name"
+                else:
+                    yield f"Gemini Error: Model '{model_name}' not found. Valid models: 'gemini-1.5-pro'. Try: :set-ai gemini-1.5-pro"
+            elif "403" in error_msg or "permission" in error_msg.lower():
+                yield f"Gemini Error: API key permission denied. Check your API key in config.json."
+            elif "429" in error_msg or "quota" in error_msg.lower():
+                yield f"Gemini Error: API quota exceeded. Try again later or check your billing."
+            else:
+                yield f"Gemini Error: {error_msg}"
+
+    async def _stream_claude(
+        self,
+        messages: List[Dict[str, Any]],
+        temperature: float,
+        max_tokens: int,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Native streaming for Claude using messages.stream().
+        """
+        if not self._claude_api_key:
+            raise ProviderNotConfiguredError(
+                "Claude provider selected but no API key is configured."
+            )
+
+        try:
+            import anthropic  # type: ignore
+        except ImportError:
+            raise ProviderNotConfiguredError(
+                "Claude provider requires the 'anthropic' package. "
+                "Install it with `pip install anthropic`."
+            )
+
+        try:
+            client = anthropic.Anthropic(api_key=self._claude_api_key)
+            model_name = self._normalize_model_for_provider("claude", self.model)
+            
+            # Parse messages and extract system message
+            prompt = self._messages_to_prompt(messages)
+            system_msg = ""
+            user_content = prompt
+            if prompt.startswith("SYSTEM:"):
+                parts = prompt.split("\nUSER:", 1)
+                if len(parts) == 2:
+                    system_msg = parts[0].replace("SYSTEM:", "").strip()
+                    user_content = parts[1].strip()
+            elif prompt.startswith("USER:"):
+                user_content = prompt.replace("USER:", "", 1).strip()
+            
+            # Parse multiple USER/ASSISTANT messages
+            parsed_messages = []
+            current_role = "user"
+            current_content = []
+            for line in user_content.split("\n"):
+                if line.startswith("USER:"):
+                    if current_content:
+                        parsed_messages.append({"role": current_role, "content": "\n".join(current_content)})
+                    current_role = "user"
+                    current_content = [line.replace("USER:", "", 1).strip()]
+                elif line.startswith("ASSISTANT:"):
+                    if current_content:
+                        parsed_messages.append({"role": current_role, "content": "\n".join(current_content)})
+                    current_role = "assistant"
+                    current_content = [line.replace("ASSISTANT:", "", 1).strip()]
+                else:
+                    current_content.append(line)
+            if current_content:
+                parsed_messages.append({"role": current_role, "content": "\n".join(current_content)})
+            
+            if not parsed_messages:
+                parsed_messages = [{"role": "user", "content": user_content}]
+            
+            # Stream from Claude
+            with client.messages.stream(
+                model=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_msg if system_msg else None,
+                messages=parsed_messages,
+            ) as stream:
+                for text_event in stream.text_stream:
+                    if text_event:
+                        yield text_event
+        except Exception as e:
+            logger.error(f"Claude streaming failed: {e}", exc_info=True)
+            error_msg = str(e)
+            if "404" in error_msg or "not found" in error_msg.lower():
+                yield f"Claude Error: Model not found. Try 'claude-3-5-sonnet' or 'claude-3-opus'."
+            elif "403" in error_msg or "permission" in error_msg.lower() or "authentication" in error_msg.lower():
+                yield f"Claude Error: API key permission denied. Check your API key in config.json."
+            elif "429" in error_msg or "quota" in error_msg.lower() or "rate limit" in error_msg.lower():
+                yield f"Claude Error: API quota/rate limit exceeded. Try again later or check your billing."
+            else:
+                yield f"Claude Error: {error_msg}"
+
+    async def _stream_ollama(
+        self,
+        messages: List[Dict[str, Any]],
+        temperature: float,
+        max_tokens: int,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Native streaming for Ollama using /api/generate with stream=True.
+        """
+        base_url = self._ollama_config.get("base_url") or "http://127.0.0.1:11434"
+        url = base_url.rstrip("/") + "/api/generate"
+        prompt = self._messages_to_prompt(messages)
+
+        try:
+            import aiohttp  # type: ignore
+        except ImportError:
+            # Fallback to requests with streaming
+            import requests
+            try:
+                payload = {
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": True,
+                    "options": {
+                        "temperature": temperature,
+                        "num_predict": max_tokens,
+                    },
+                }
+                resp = requests.post(url, json=payload, timeout=60, stream=True)
+                resp.raise_for_status()
+                for line in resp.iter_lines():
+                    if line:
+                        try:
+                            data = json.loads(line)
+                            if "response" in data:
+                                yield data["response"]
+                            if data.get("done", False):
+                                break
+                        except json.JSONDecodeError:
+                            continue
+            except Exception as e:
+                logger.error(f"Ollama streaming failed: {e}", exc_info=True)
+                error_msg = str(e)
+                if "404" in error_msg or "not found" in error_msg.lower():
+                    yield f"Ollama Error: Model '{self.model}' not found. Pull it with: ollama pull {self.model}"
+                elif "connection" in error_msg.lower() or "refused" in error_msg.lower():
+                    yield f"Ollama Error: Cannot connect to Ollama at {base_url}. Is the Ollama daemon running?"
+                elif "timeout" in error_msg.lower():
+                    yield f"Ollama Error: Request timed out. The model might be too slow or the daemon is overloaded."
+                else:
+                    yield f"Ollama Error: {error_msg}"
+            return
+
+        # Use aiohttp for async streaming
+        try:
+            async with aiohttp.ClientSession() as session:
+                payload = {
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": True,
+                    "options": {
+                        "temperature": temperature,
+                        "num_predict": max_tokens,
+                    },
+                }
+                async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                    resp.raise_for_status()
+                    # CRITICAL: Ollama sends newline-delimited JSON, so we need to read line by line
+                    # resp.content yields byte chunks, not complete lines. We need to buffer and split by newlines.
+                    buffer = b""
+                    async for chunk in resp.content:
+                        if chunk:
+                            buffer += chunk
+                            # Process complete lines (ending with \n)
+                            while b"\n" in buffer:
+                                line, buffer = buffer.split(b"\n", 1)
+                                if line.strip():  # Skip empty lines
+                                    try:
+                                        data = json.loads(line.decode('utf-8'))
+                                        if "response" in data:
+                                            yield data["response"]
+                                        if data.get("done", False):
+                                            return  # Exit cleanly when done
+                                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                                        # Log but continue - might be partial data or encoding issue
+                                        logger.debug(f"Ollama JSON decode error: {e}, line: {line[:100]}")
+                                        continue
+                    # Process any remaining data in buffer
+                    if buffer.strip():
+                        try:
+                            data = json.loads(buffer.decode('utf-8'))
+                            if "response" in data:
+                                yield data["response"]
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            pass  # Ignore final partial data
+        except Exception as e:
+            logger.error(f"Ollama streaming failed: {e}", exc_info=True)
+            error_msg = str(e)
+            if "404" in error_msg or "not found" in error_msg.lower():
+                yield f"Ollama Error: Model '{self.model}' not found. Pull it with: ollama pull {self.model}"
+            elif "connection" in error_msg.lower() or "refused" in error_msg.lower():
+                yield f"Ollama Error: Cannot connect to Ollama at {base_url}. Is the Ollama daemon running?"
+            elif "timeout" in error_msg.lower():
+                yield f"Ollama Error: Request timed out. The model might be too slow or the daemon is overloaded."
+            else:
+                yield f"Ollama Error: {error_msg}"
 
     def _track_last_modified(self, action: Dict[str, Any], result: ActionResult) -> None:
         """

@@ -76,22 +76,22 @@ class TreePanel:
                 extension = "    " if is_last else "│   "
 
                 if entry.is_dir():
-                    # Enhanced folder icon with better visual design
+                    # Ultra-vibrant folder icon with glow
                     icon = f"{BOLD}{ELECTRIC_CYAN}📁{RESET} " if color else "📁 "
                     name = f"{entry.name}/"
                     if color:
                         name = f"{BOLD}{ELECTRIC_CYAN}{name}{RESET}"
                 else:
-                    # Enhanced file icon with color coding
+                    # Ultra-vibrant file icon with enhanced colors
                     file_icon = "📄 "
                     if color:
                         file_color = self._get_file_color(entry)
-                        icon = f"{file_color}{file_icon}{RESET}"
+                        icon = f"{BOLD}{file_color}{file_icon}{RESET}"
                     else:
                         icon = file_icon
                     name = entry.name
                     if color:
-                        name = f"{self._get_file_color(entry)}{name}{RESET}"
+                        name = f"{BOLD}{self._get_file_color(entry)}{name}{RESET}"
 
                 lines.append(f"{prefix}{branch}{icon}{name}")
 
@@ -146,9 +146,14 @@ class TreePanel:
         lines: List[str] = []
         lines.append("")  # Top spacer
         
-        # Enhanced header with better styling
-        header = f"{BOLD}{ELECTRIC_CYAN}📁 {self.base_dir.name}/{RESET}"
-        lines.append(f" {header}")
+        # Ultra-vibrant header with gradient effect
+        header = f"{BOLD}{ELECTRIC_CYAN}╔═══ 📁 {self.base_dir.name}/ ═══╗{RESET}"
+        header_len = len(self._strip_ansi(header))
+        pad = max(0, (self.width - header_len) // 2)
+        lines.append((" " * pad) + header)
+        # Add decorative underline
+        underline = f"{BOLD}{BRIGHT_MAGENTA}{'═' * (header_len - 2)}{RESET}"
+        lines.append((" " * (pad + 1)) + underline)
         lines.append("")
         
         # Build tree with enhanced colors
@@ -160,10 +165,10 @@ class TreePanel:
         
         lines.append("")
         
-        # Enhanced footer with better stats display
+        # Ultra-vibrant footer with enhanced stats display
         total_items = len(tree_lines)
         footer = (
-            f"{DIM}{MID_GRAY}Total: {BOLD}{ELECTRIC_CYAN}{total_items}{RESET}{DIM}{MID_GRAY} items "
+            f"{BOLD}{ELECTRIC_CYAN}╚═══{RESET} {BOLD}{BRIGHT_MAGENTA}Total:{RESET} {BOLD}{ELECTRIC_CYAN}{total_items}{RESET} {MID_GRAY}items "
             f"(max depth: {self.max_depth}){RESET}"
         )
         lines.append(f" {footer}")

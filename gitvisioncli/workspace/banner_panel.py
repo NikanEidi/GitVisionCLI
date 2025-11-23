@@ -169,8 +169,8 @@ class BannerPanel:
         lines.append("")
         lines.append("")
 
-        # Workspace title under logo
-        title = f"{BOLD}{NEON_PURPLE}⚡ GITVISION WORKSPACE ⚡{RESET}"
+        # Ultra-vibrant workspace title with gradient effect
+        title = f"{BOLD}{ELECTRIC_CYAN}⚡{RESET}{BOLD}{NEON_PURPLE} GITVISION WORKSPACE {RESET}{BOLD}{ELECTRIC_CYAN}⚡{RESET}"
         title_len = len(self._strip_ansi(title))
         if title_len < self.width:
             t_pad = (self.width - title_len) // 2
@@ -187,20 +187,23 @@ class BannerPanel:
         lines.append((" " * left_pad) + sep_line)
         lines.append("")
         
-        # Commands sections with enhanced visual design
+        # Commands sections with ULTRA-ENHANCED visual design
         for section_name, commands in ESSENTIAL_COMMANDS:
-            # Section header - centered, neon cyan with decorative elements
-            header_text = f"{BOLD}{ELECTRIC_CYAN}┌─ {section_name} ─┐{RESET}"
+            # Ultra-vibrant section header with gradient effect
+            header_text = f"{BOLD}{ELECTRIC_CYAN}╔═══ {section_name} ═══╗{RESET}"
             header_len = len(self._strip_ansi(header_text))
             left_pad = (self.width - header_len) // 2
             lines.append((" " * left_pad) + header_text)
+            # Add decorative underline
+            underline = f"{BOLD}{BRIGHT_MAGENTA}{'═' * (len(self._strip_ansi(header_text)) - 2)}{RESET}"
+            lines.append((" " * (left_pad + 1)) + underline)
             lines.append("")
             
-            # Commands with enhanced formatting and better visual hierarchy
+            # Commands with ULTRA-ENHANCED formatting and visual hierarchy
             for cmd, desc in commands:
-                # Enhanced formatting with better spacing and visual indicators
-                cmd_col = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd}{RESET}"
-                desc_col = f"{DIM}{MID_GRAY}{desc}{RESET}"
+                # Ultra-vibrant formatting with glow effects
+                cmd_col = f"{BOLD}{ELECTRIC_CYAN}▶{RESET} {BOLD}{BRIGHT_MAGENTA}{cmd}{RESET}"
+                desc_col = f"{MID_GRAY}{desc}{RESET}"
 
                 if self.width >= 60:
                     # CRITICAL FIX: Use ANSI-aware padding to avoid counting escape codes
@@ -231,7 +234,7 @@ class BannerPanel:
         lines.append((" " * left_pad_sep) + footer_sep)
         lines.append("")
         
-        footer = f"{BOLD}{ELECTRIC_CYAN}💬{RESET} {DIM}{MID_GRAY}Ask AI anything in natural language!{RESET}"
+        footer = f"{BOLD}{ELECTRIC_CYAN}💬{RESET} {BOLD}{BRIGHT_MAGENTA}Ask AI anything in natural language!{RESET}"
         footer_len = len(self._strip_ansi(footer))
         left_pad = (self.width - footer_len) // 2
         lines.append((" " * left_pad) + footer)

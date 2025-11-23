@@ -200,37 +200,35 @@ class DualPanelRenderer:
     # --------------------------------------------------------------------
     def _hborder(self, left_ch: str, mid_ch: str, right_ch: str) -> str:
         """
-        Unified horizontal border builder.
+        Enhanced horizontal border builder with gradient effect.
 
-        Guarantees:
-        - All frame glyphs and horizontal bars use NEON_PURPLE.
-        - No ANSI reset is applied until AFTER the final border glyph.
+        Uses vibrant neon colors with glow effect for ultra-modern look.
         """
         left_bar = "═" * self.left_width
         right_bar = "═" * self.right_width
 
+        # Enhanced border with gradient effect - ultra-vibrant NEON_PURPLE theme
         return (
-            f"{NEON_PURPLE}{left_ch}"
-            f"{NEON_PURPLE}{left_bar}"
-            f"{NEON_PURPLE}{mid_ch}"
-            f"{NEON_PURPLE}{right_bar}"
-            f"{NEON_PURPLE}{right_ch}"
+            f"{BOLD}{NEON_PURPLE}{left_ch}{RESET}"
+            f"{BOLD}{NEON_PURPLE}{left_bar}{RESET}"
+            f"{BOLD}{BRIGHT_MAGENTA}{mid_ch}{RESET}"
+            f"{BOLD}{NEON_PURPLE}{right_bar}{RESET}"
+            f"{BOLD}{NEON_PURPLE}{right_ch}{RESET}"
         )
 
     def _vframe_row(self, left_text: str, right_text: str, middle_char: str = "│") -> str:
         """
-        Unified vertical frame row for all content-style lines.
+        Enhanced vertical frame row with vibrant borders.
 
-        - Left/right text are assumed to already be ANSI-width fitted.
-        - Outer frame glyphs are always NEON_PURPLE.
-        - Middle separator uses NEON_PURPLE with no lingering resets.
+        - Ultra-bright borders with glow effect
+        - Middle separator uses gradient colors
         """
         return (
-            f"{NEON_PURPLE}║{RESET}"
+            f"{BOLD}{NEON_PURPLE}║{RESET}"
             f"{left_text}"
-            f"{NEON_PURPLE}{middle_char}{RESET}"
+            f"{BOLD}{BRIGHT_MAGENTA}{middle_char}{RESET}"
             f"{right_text}"
-            f"{NEON_PURPLE}║{RESET}"
+            f"{BOLD}{NEON_PURPLE}║{RESET}"
         )
 
     def _top_header(self) -> List[str]:
@@ -238,17 +236,17 @@ class DualPanelRenderer:
         # Line 1
         top = self._hborder("╔", "╤", "╗") + RESET
 
-        # Line 2 titles
-        left_title = self._fit_line_with_ansi(f"{BOLD}{ELECTRIC_CYAN}  AI CONSOLE  {RESET}", self.left_width)
-        right_title_txt = f"{BOLD}{BRIGHT_MAGENTA}⚡ GITVISION WORKSPACE ⚡{RESET}"
+        # Line 2 titles - ENHANCED with ultra-vibrant colors and glow
+        left_title = self._fit_line_with_ansi(f"{BOLD}{ELECTRIC_CYAN}✨ AI CONSOLE ✨{RESET}", self.left_width)
+        right_title_txt = f"{BOLD}{BRIGHT_MAGENTA}⚡{RESET}{BOLD}{NEON_PURPLE} GITVISION WORKSPACE {RESET}{BOLD}{BRIGHT_MAGENTA}⚡{RESET}"
         right_title = self._center_text_with_ansi(right_title_txt, self.right_width)
 
         titles = (
-            f"{NEON_PURPLE}║{RESET}"
+            f"{BOLD}{NEON_PURPLE}║{RESET}"
             f"{left_title}"
-            f"{NEON_PURPLE}║{RESET}"
+            f"{BOLD}{BRIGHT_MAGENTA}║{RESET}"
             f"{right_title}"
-            f"{NEON_PURPLE}║{RESET}"
+            f"{BOLD}{NEON_PURPLE}║{RESET}"
         )
 
         # Line 3: Mode bar
@@ -257,17 +255,17 @@ class DualPanelRenderer:
         mode_bar = self._mode_separator(mode_col, self.right_width)
 
         sep = (
-            f"{NEON_PURPLE}╠"
-            f"{NEON_PURPLE}{'═' * self.left_width}"
-            f"{NEON_PURPLE}╪{RESET}"
+            f"{BOLD}{NEON_PURPLE}╠"
+            f"{BOLD}{NEON_PURPLE}{'═' * self.left_width}"
+            f"{BOLD}{BRIGHT_MAGENTA}╪{RESET}"
             f"{mode_bar}"
-            f"{NEON_PURPLE}╣{RESET}"
+            f"{BOLD}{NEON_PURPLE}╣{RESET}"
         )
 
         return [top, titles, sep]
 
     def _mode_separator(self, text: str, width: int) -> str:
-        """Center mode text inside separator line."""
+        """Enhanced mode separator with gradient effect."""
         tlen = visible_len(text)
         if tlen >= width:
             return self._fit_line_with_ansi(text, width)
@@ -276,7 +274,8 @@ class DualPanelRenderer:
         L = pad // 2
         R = pad - L
 
-        return f"{NEON_PURPLE}{'═' * L}{RESET}{text}{NEON_PURPLE}{'═' * R}{RESET}"
+        # Gradient effect: purple -> magenta -> purple
+        return f"{BOLD}{NEON_PURPLE}{'═' * L}{RESET}{text}{BOLD}{NEON_PURPLE}{'═' * R}{RESET}"
 
     # --------------------------------------------------------------------
     # FOOTER (INPUT)
@@ -295,7 +294,7 @@ class DualPanelRenderer:
         """
         full_width = self.left_width + 1 + self.right_width
 
-        label = f"{BOLD}{BRIGHT_MAGENTA}● INPUT{RESET}"
+        label = f"{BOLD}{ELECTRIC_CYAN}▶{RESET}{BOLD}{BRIGHT_MAGENTA} INPUT{RESET}"
         # Visible width for the first line text after " <label> "
         label_prefix = f" {label} "
         label_prefix_vis = visible_len(label_prefix)
@@ -325,7 +324,7 @@ class DualPanelRenderer:
                 inner = " " * label_prefix_vis + chunk
 
             padded = self._fit_line_with_ansi(inner, full_width)
-            lines.append(f"{NEON_PURPLE}║{RESET}{padded}{NEON_PURPLE}║{RESET}")
+            lines.append(f"{BOLD}{NEON_PURPLE}║{RESET}{padded}{BOLD}{NEON_PURPLE}║{RESET}")
 
         return lines
 
@@ -335,9 +334,9 @@ class DualPanelRenderer:
         # the top header and input separator.
         full = self.left_width + 1 + self.right_width
         line = (
-            f"{NEON_PURPLE}╚"
-            f"{NEON_PURPLE}{'═' * full}"
-            f"{NEON_PURPLE}╝"
+            f"{BOLD}{NEON_PURPLE}╚"
+            f"{BOLD}{NEON_PURPLE}{'═' * full}"
+            f"{BOLD}{NEON_PURPLE}╝"
         )
         return line + RESET
 
@@ -350,7 +349,7 @@ class DualPanelRenderer:
         """
         inner_width = self.left_width + 1 + self.right_width
         fitted = self._fit_line_with_ansi(text, inner_width)
-        return f"{NEON_PURPLE}║{RESET}{fitted}{NEON_PURPLE}║{RESET}"
+        return f"{BOLD}{NEON_PURPLE}║{RESET}{fitted}{BOLD}{NEON_PURPLE}║{RESET}"
 
     # --------------------------------------------------------------------
     # CONTENT ROWS

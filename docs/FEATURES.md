@@ -55,7 +55,7 @@ Switch between AI providers seamlessly:
 |----------|--------|----------|
 | **OpenAI** | GPT-4, GPT-4 Turbo | Best overall, coding |
 | **Anthropic** | Claude 3.5 Sonnet | Long context, analysis |
-| **Google** | Gemini Pro | Fast, multilingual |
+| **Google** | Gemini 1.5 Pro | Fast, multilingual, streaming support |
 | **Ollama** | Local models | Private, offline |
 
 ```bash

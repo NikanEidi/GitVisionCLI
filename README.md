@@ -83,7 +83,7 @@ create github issue "Bug fix needed"
 create github pr "New feature"
 ```
 
-### 🎨 **Beautiful Dual-Panel UI**
+### 🎨 **Beautiful Dual-Panel UI with Neon Purple Theme**
 
 ```
 ┌─────────────────────────────────┬──────────────────────────────────┐
@@ -92,10 +92,16 @@ create github pr "New feature"
 │  💬 Chat with AI                │  📁 File Tree Browser             
 │  🔧 Tool execution logs         │  ✏️  Code Editor (line numbers)   │
 │  📊 Status updates               │  📊 Git Graph Visualization       │
-│  🎨 Neon-themed interface        │  📄 Markdown Renderer             │
+│  🎨 Neon Purple Theme            │  📄 Markdown Renderer             │
 │  ⚡ Real-time streaming          │  📚 Command Reference              
 └─────────────────────────────────┴──────────────────────────────────┘
 ```
+
+**Features:**
+- **Neon Purple Borders** - Vibrant purple frame borders throughout
+- **Gradient Effects** - Smooth color transitions for modern look
+- **ANSI-Aware Rendering** - Proper escape sequence handling
+- **Zero Flicker** - Smooth, stable frame updates
 
 ### ⚡ **Lightning-Fast Line Editing**
 

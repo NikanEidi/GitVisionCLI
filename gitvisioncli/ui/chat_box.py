@@ -12,6 +12,7 @@ from dataclasses import dataclass
 # Import the stabilized color palette
 from gitvisioncli.ui.colors import (
     RESET,
+    BOLD,
     DIM,
     NEON_PURPLE,
     CHAT_BORDER_USER,
@@ -157,11 +158,11 @@ class ChatBox:
         content_width = self.width - (2 * self.padding) - 2
         pad_str = " " * self.padding
         
-        # --- Top border ---
+        # --- Top border --- (FIXED: Proper RESET for NEON_PURPLE)
         top = (
-            f"{border_color}{style.tl}"
-            f"{style.h * (self.width - 2)}"
-            f"{style.tr}{RESET}"
+            f"{BOLD}{border_color}{style.tl}{RESET}"
+            f"{BOLD}{border_color}{style.h * (self.width - 2)}{RESET}"
+            f"{BOLD}{border_color}{style.tr}{RESET}"
         )
         lines.append(top)
         
@@ -169,18 +170,18 @@ class ChatBox:
         header_text = f"{label_color}{label}{RESET}"
         header_padded = self._pad_line(header_text, content_width)
         header_line = (
-            f"{border_color}{style.v}{RESET}"
+            f"{BOLD}{border_color}{style.v}{RESET}"
             f"{pad_str}{header_padded}{pad_str}"
-            f"{border_color}{style.v}{RESET}"
+            f"{BOLD}{border_color}{style.v}{RESET}"
         )
         lines.append(header_line)
         
         # --- Separator ---
         sep_line = (
-            f"{border_color}{style.v}{RESET}"
+            f"{BOLD}{border_color}{style.v}{RESET}"
             # Use spaces for the separator for a cleaner look
             f"{' ' * (self.width - 2)}"
-            f"{border_color}{style.v}{RESET}"
+            f"{BOLD}{border_color}{style.v}{RESET}"
         )
         lines.append(sep_line)
         
@@ -190,20 +191,20 @@ class ChatBox:
             colored = f"{text_color}{line}{RESET}" if line.strip() else ""
             padded = self._pad_line(colored, content_width)
             content_line = (
-                f"{border_color}{style.v}{RESET}"
+                f"{BOLD}{border_color}{style.v}{RESET}"
                 f"{pad_str}{padded}{pad_str}"
-                f"{border_color}{style.v}{RESET}"
+                f"{BOLD}{border_color}{style.v}{RESET}"
             )
             lines.append(content_line)
         
         # --- Bottom separator ---
         lines.append(sep_line)
         
-        # --- Bottom border ---
+        # --- Bottom border --- (FIXED: Proper RESET for NEON_PURPLE)
         bottom = (
-            f"{border_color}{style.bl}"
-            f"{style.h * (self.width - 2)}"
-            f"{style.br}{RESET}"
+            f"{BOLD}{border_color}{style.bl}{RESET}"
+            f"{BOLD}{border_color}{style.h * (self.width - 2)}{RESET}"
+            f"{BOLD}{border_color}{style.br}{RESET}"
         )
         lines.append(bottom)
         
@@ -317,7 +318,7 @@ class AnimatedChatBox(ChatBox):
     def display_thinking(self, duration: float = 0.7) -> None:
         """Thinking animation."""
         import time
-        print(f"{DIM}{NEON_PURPLE}⚡ Processing...{RESET}", end="", flush=True)
+        print(f"{BOLD}{DIM}{NEON_PURPLE}⚡ Processing...{RESET}", end="", flush=True)
         time.sleep(duration)
         # Clear the "Processing" line
         print("\r" + " " * 30 + "\r", end="", flush=True)

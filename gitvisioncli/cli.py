@@ -244,6 +244,9 @@ def _render_ui(
     Helper to clear screen and render the UI panels in a single, stable frame.
     Ensures we NEVER append new "panels" — just redraw one frame.
     """
+    # CRITICAL: Always clear screen first to prevent stacking
+    print(clear_screen(), end="", flush=True)
+    
     chat_content = conversation.render()
     if processing_msg:
         chat_content += "\n" + processing_msg
@@ -254,7 +257,7 @@ def _render_ui(
         frame = renderer.render(chat_content, status_line=status_line)
     else:
         # Fallback: single-panel mode, clear manually.
-        frame = clear_screen() + chat_content
+        frame = chat_content
 
     print(frame, end="", flush=True)
 
@@ -734,17 +737,35 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                     shell_cmd = user_input[1:].strip()
                 else:
                     # Plain commands like `pwd`, `ls`, etc. (no dot) that should bypass AI
+                    # ALL standard shell commands are supported
                     simple_shells = {
-                        "pwd",
-                        "ls",
-                        "ll",
-                        "whoami",
-                        "cat",
-                        "tree",
-                        "mkdir",
-                        "rmdir",
-                        "rm",
-                        "touch",
+                        # Navigation
+                        "pwd", "cd", "cd..", "cd..",
+                        # File listing
+                        "ls", "ll", "la", "dir",
+                        # File operations
+                        "cat", "head", "tail", "less", "more", "grep", "find", "which", "whereis",
+                        "touch", "mkdir", "rmdir", "rm", "cp", "mv", "ln", "chmod", "chown",
+                        # System info
+                        "whoami", "uname", "hostname", "date", "uptime", "df", "du", "free",
+                        # Process management
+                        "ps", "top", "kill", "killall", "jobs", "bg", "fg",
+                        # Network
+                        "ping", "curl", "wget", "netstat", "ifconfig", "ip",
+                        # Text processing
+                        "grep", "sed", "awk", "sort", "uniq", "wc", "cut", "tr",
+                        # Archives
+                        "tar", "zip", "unzip", "gzip", "gunzip",
+                        # Package managers
+                        "pip", "npm", "yarn", "brew", "apt", "yum",
+                        # Version control (basic)
+                        "git", "svn", "hg",
+                        # Debugging
+                        "python", "python3", "node", "npm", "debug", "test",
+                        # Utilities
+                        "clear", "history", "alias", "export", "env", "echo", "printenv",
+                        # Tree/visualization
+                        "tree", "find",
                     }
                     parts = cmd_lower.split()
                     first_token = parts[0] if parts else ""

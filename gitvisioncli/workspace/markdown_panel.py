@@ -100,22 +100,20 @@ class MarkdownPanel:
                 level = len(header_match.group(1))
                 text = header_match.group(2)
                 
-                # Enhanced header styling with icons and colors
+                # Ultra-vibrant header styling with gradient effects
                 if level == 1:
-                    # CRITICAL FIX: Add closing ╗ bracket to match consistent pattern
-                    header_line = f" {BOLD}{ELECTRIC_CYAN}╔═ {text} ═╗{RESET}"
+                    header_line = f" {BOLD}{ELECTRIC_CYAN}╔═══{RESET}{BOLD}{NEON_PURPLE} {text} {RESET}{BOLD}{ELECTRIC_CYAN}═══╗{RESET}"
                     result.append(header_line)
-                    # CRITICAL FIX: Underline width must match header width
-                    # Header: " ╔═ {text} ═╗" = 1(space) + 1(╔) + 1(═) + 1(space) + len(text) + 1(space) + 1(═) + 1(╗) = len(text) + 7
-                    # Underline: " ═..." = 1(space) + N(═) = len(text) + 7, so N = len(text) + 6
-                    result.append(' ' + f"{DIM}{DARK_GRAY}{'═' * (len(text) + 6)}{RESET}")
+                    # Ultra-vibrant underline with gradient
+                    underline = f" {BOLD}{BRIGHT_MAGENTA}{'═' * (len(text) + 8)}{RESET}"
+                    result.append(underline)
                 elif level == 2:
-                    header_line = f" {BOLD}{NEON_PURPLE}▶ {text}{RESET}"
+                    header_line = f" {BOLD}{ELECTRIC_CYAN}▶{RESET} {BOLD}{NEON_PURPLE}{text}{RESET}"
                     result.append(header_line)
-                    result.append(' ' + f"{DIM}{DARK_GRAY}{'─' * (len(text) + 2)}{RESET}")
+                    result.append(' ' + f"{BOLD}{BRIGHT_MAGENTA}{'─' * (len(text) + 2)}{RESET}")
                 else:
-                    prefix = "  " * (level - 3) + "• "
-                    header_line = f" {BOLD}{BRIGHT_MAGENTA}{prefix}{text}{RESET}"
+                    prefix = "  " * (level - 3) + f"{BOLD}{ELECTRIC_CYAN}•{RESET} "
+                    header_line = f" {prefix}{BOLD}{BRIGHT_MAGENTA}{text}{RESET}"
                     result.append(header_line)
                 
                 i += 1
@@ -140,9 +138,9 @@ class MarkdownPanel:
             list_match = re.match(r'^(\s*)([*\-\+]|\d+\.)\s+(.+)$', line)
             if list_match:
                 indent, marker, text = list_match.groups()
-                # Enhanced bullet styling
+                # Ultra-vibrant bullet styling with glow
                 if marker in ['*', '-', '+']:
-                    bullet = f"{BOLD}{ELECTRIC_CYAN}•{RESET}"
+                    bullet = f"{BOLD}{ELECTRIC_CYAN}▶{RESET}"
                 else:
                     bullet = f"{BOLD}{BRIGHT_MAGENTA}{marker}{RESET}"
                 result.append(f" {indent}{bullet} {text}")
@@ -156,8 +154,8 @@ class MarkdownPanel:
             
         result.append("")
 
-        # Enhanced footer/separator with better visual design
-        footer_sep = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        # Ultra-vibrant footer/separator with gradient
+        footer_sep = f"{BOLD}{BRIGHT_MAGENTA}{'═' * min(self.width - 4, 50)}{RESET}"
         result.append(f" {footer_sep}")
 
         return result

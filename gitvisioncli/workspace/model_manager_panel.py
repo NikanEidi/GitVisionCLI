@@ -142,7 +142,7 @@ class ModelManagerPanel:
 
     def _ollama_section(self) -> List[str]:
         lines: List[str] = []
-        header = f"{BOLD}{ELECTRIC_CYAN}┌─ Ollama (Local Models) ─┐{RESET}"
+        header = f"{BOLD}{ELECTRIC_CYAN}╔═══ Ollama (Local Models) ═══╗{RESET}"
         lines.append(self._center_line(header))
         lines.append("")
 
@@ -189,7 +189,7 @@ class ModelManagerPanel:
 
     def _providers_section(self, cfg: dict) -> List[str]:
         lines: List[str] = []
-        header = f"{BOLD}{ELECTRIC_CYAN}┌─ API Providers (Config) ─┐{RESET}"
+        header = f"{BOLD}{ELECTRIC_CYAN}╔═══ API Providers (Config) ═══╗{RESET}"
         lines.append(self._center_line(header))
         lines.append("")
 
@@ -222,7 +222,7 @@ class ModelManagerPanel:
 
     def _openai_models_section(self, cfg: dict) -> List[str]:
         lines: List[str] = []
-        header = f"{BOLD}{ELECTRIC_CYAN}┌─ OpenAI Models (Live) ─┐{RESET}"
+        header = f"{BOLD}{ELECTRIC_CYAN}╔═══ OpenAI Models (Live) ═══╗{RESET}"
         lines.append(self._center_line(header))
         lines.append("")
 
@@ -254,7 +254,7 @@ class ModelManagerPanel:
 
     def _current_model_section(self, cfg: dict) -> List[str]:
         lines: List[str] = []
-        header = f"{BOLD}{ELECTRIC_CYAN}┌─ Current AI Engine ─┐{RESET}"
+        header = f"{BOLD}{ELECTRIC_CYAN}╔═══ Current AI Engine ═══╗{RESET}"
         lines.append(self._center_line(header))
         lines.append("")
         current_model_raw = cfg.get("model") or "gpt-4o-mini"
@@ -275,11 +275,11 @@ class ModelManagerPanel:
             provider_norm = provider_hint
             model_norm = current_model_raw
 
-        # Enhanced active engine display with better visual design
+        # Ultra-vibrant active engine display with glow effect
         engine_icon = f"{BOLD}{ELECTRIC_CYAN}⚡{RESET}"
         line = (
             f"  {engine_icon} {BOLD}{BRIGHT_MAGENTA}Active:{RESET} "
-            f"{BOLD}{NEON_PURPLE}{provider_norm}{RESET}{DIM}{MID_GRAY}/{RESET}{BOLD}{BRIGHT_MAGENTA}{model_norm}{RESET}"
+            f"{BOLD}{ELECTRIC_CYAN}{provider_norm}{RESET}{BOLD}{BRIGHT_MAGENTA}/{RESET}{BOLD}{NEON_PURPLE}{model_norm}{RESET}"
         )
         lines.append(line)
 
@@ -299,10 +299,10 @@ class ModelManagerPanel:
         cfg = self._load_config_safe()
         lines: List[str] = []
 
-        # Enhanced title with better visual design
-        title = f"{BOLD}{NEON_PURPLE}╔═ AI ENGINE / MODEL MANAGER ═╗{RESET}"
+        # Ultra-vibrant title with gradient effect
+        title = f"{BOLD}{ELECTRIC_CYAN}╔═══{RESET}{BOLD}{NEON_PURPLE} AI ENGINE / MODEL MANAGER {RESET}{BOLD}{ELECTRIC_CYAN}═══╗{RESET}"
         lines.append(self._center_line(title))
-        separator = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        separator = f"{BOLD}{BRIGHT_MAGENTA}{'═' * min(self.width - 4, 50)}{RESET}"
         sep_pad = max(0, (self.width - len(self._strip_ansi(separator))) // 2)
         lines.append(" " * sep_pad + separator)
         lines.append("")
