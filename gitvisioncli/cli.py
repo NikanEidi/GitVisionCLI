@@ -1511,6 +1511,13 @@ Examples:
         help="Run fully automated demo (for screen recording)"
     )
     
+    # interactive (explicit command for launching the dual-panel UI)
+    subparsers.add_parser(
+        "interactive",
+        aliases=["chat", "ui"],
+        help="Launch interactive dual-panel UI (default if no command specified)"
+    )
+    
     return parser
 
 
@@ -1531,9 +1538,13 @@ def main():
     elif args.command == "demo":
         # Demo is async, so we need to run it with asyncio
         return asyncio.run(cmd_demo(args))
-    else:
-        # Default: Interactive UI
+    elif args.command in ("interactive", "chat", "ui", None):
+        # Launch interactive UI (explicit command or default)
         return cmd_interactive(args)
+    else:
+        # Unknown command (shouldn't happen due to argparse, but handle gracefully)
+        parser.print_help()
+        return 1
 
 
 if __name__ == "__main__":
