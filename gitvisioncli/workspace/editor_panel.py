@@ -165,15 +165,14 @@ class EditorPanel:
                 return True
 
             if not self.file_path.is_file():
-                # Not a regular file; treat as error
-                msg = f"Path is not a file: {self.file_path}"
-                logger.error(msg)
+                # Not a regular file (e.g., folder) - silently skip, don't show error
+                logger.debug(f"EditorPanel: Skipping non-file path: {self.file_path}")
                 self.file_path = None
-                self.content = [msg]
+                self.content = []
                 self.cursor_line = 0
-                self.view_bottom_line = 1
+                self.view_bottom_line = None
                 self._set_modified(False)
-                self._notify_change()
+                # Don't notify change - just silently fail
                 return False
 
             # Read text and normalize newlines
@@ -695,3 +694,77 @@ class EditorPanel:
         new_lines = new_text_norm.split("\n")
         self.apply_line_edit(start_line, end_line, new_lines)
         logger.debug(f"Live edit: replaced range {start_line}-{end_line} with text block")
+
+    # ------------------------------------------------------------------
+    # STREAMING API (FOR LIVE TYPING DURING AI GENERATION)
+    # ------------------------------------------------------------------
+
+    def write_stream(self, text: str) -> None:
+        """
+        Stream text into the editor during AI generation (live typing effect).
+        
+        This method accumulates text tokens and updates the editor buffer
+        incrementally, providing visual feedback as the AI generates content.
+        
+        Args:
+            text: Text chunk to append to the current streaming buffer
+        """
+        if not hasattr(self, '_stream_buffer'):
+            self._stream_buffer = ""
+            self._stream_start_line = len(self.content) + 1 if self.content else 1
+        
+        # Accumulate text
+        self._stream_buffer += text
+        
+        # Parse accumulated text into lines
+        buffer_norm = self._normalize_newlines(self._stream_buffer)
+        lines = buffer_norm.split("\n")
+        
+        # If we have complete lines (ending with newline), update the editor
+        if buffer_norm.endswith("\n") or "\n" in self._stream_buffer:
+            # Get the last complete line
+            complete_lines = lines[:-1] if not buffer_norm.endswith("\n") else lines
+            
+            if complete_lines:
+                # Replace or append at the streaming position
+                if self._stream_start_line <= len(self.content):
+                    # Replace existing content
+                    end_line = min(self._stream_start_line + len(complete_lines) - 1, len(self.content))
+                    self.apply_line_edit(self._stream_start_line, end_line, complete_lines)
+                else:
+                    # Append new content
+                    for line in complete_lines:
+                        self.content.append(line)
+                        self._set_modified(True)
+                    self._notify_change()
+                
+                # Update streaming position
+                self._stream_start_line += len(complete_lines)
+                
+                # Keep only the incomplete last line in buffer
+                self._stream_buffer = lines[-1] if lines else ""
+        
+        # Always notify change for visual updates
+        self._notify_change()
+    
+    def finish_stream(self) -> None:
+        """
+        Finalize streaming: flush any remaining buffer content.
+        Call this when AI generation is complete.
+        """
+        if hasattr(self, '_stream_buffer') and self._stream_buffer:
+            # Append final buffer content
+            if self._stream_start_line <= len(self.content):
+                # Replace at current position
+                self.replace_line(self._stream_start_line - 1, self._stream_buffer)
+            else:
+                # Append new line
+                self.content.append(self._stream_buffer)
+                self._set_modified(True)
+            self._notify_change()
+        
+        # Clear streaming state
+        if hasattr(self, '_stream_buffer'):
+            delattr(self, '_stream_buffer')
+        if hasattr(self, '_stream_start_line'):
+            delattr(self, '_stream_start_line')

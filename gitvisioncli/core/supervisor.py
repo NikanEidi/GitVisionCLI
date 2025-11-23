@@ -1375,6 +1375,7 @@ class ActionSupervisor:
                 status=ActionStatus.SUCCESS,
                 message=f"Deleted pattern occurrences in {path.name}",
                 data={"pattern": pattern},
+                modified_files=[str(path)],
             )
         except EditingError as e:
             return ActionResult(
@@ -1493,6 +1494,7 @@ class ActionSupervisor:
                 status=ActionStatus.SUCCESS,
                 message="Inserted block at line in file",
                 data=result.details,
+                modified_files=[str(path)],
             )
         except EditingError as e:
             return ActionResult(
@@ -1539,6 +1541,7 @@ class ActionSupervisor:
                 status=ActionStatus.SUCCESS,
                 message="Replaced block in file",
                 data=result.details,
+                modified_files=[str(path)],
             )
         except EditingError as e:
             return ActionResult(
@@ -1568,6 +1571,7 @@ class ActionSupervisor:
                 status=ActionStatus.SUCCESS,
                 message="Removed block from file",
                 data=result.details,
+                modified_files=[str(path)],
             )
         except EditingError as e:
             return ActionResult(
@@ -1852,6 +1856,7 @@ class ActionSupervisor:
             status=ActionStatus.SUCCESS,
             message=f"File moved: {src_rel} -> {dst_rel}",
             data={"source": src_rel, "destination": dst_rel},
+            modified_files=[str(src), str(dst)],
         )
 
     def _handle_copy_file(
@@ -1904,6 +1909,7 @@ class ActionSupervisor:
             status=ActionStatus.SUCCESS,
             message=f"File copied: {src_rel} -> {dst_rel}",
             data={"source": src_rel, "destination": dst_rel},
+            modified_files=[str(dst)],
         )
 
     def _handle_rename_file(
@@ -1975,6 +1981,7 @@ class ActionSupervisor:
             status=ActionStatus.SUCCESS,
             message=f"Folder created: {rel_path}",
             data={"path": rel_path},
+            modified_files=[str(path)],
         )
 
     def _handle_delete_folder(
@@ -2022,6 +2029,7 @@ class ActionSupervisor:
             status=ActionStatus.SUCCESS,
             message=f"Folder deleted: {rel_path}",
             data={"path": rel_path},
+            modified_files=[str(path)],
         )
 
     def _handle_move_folder(
@@ -2030,8 +2038,9 @@ class ActionSupervisor:
         context: ActionContext,
         transaction: TransactionManager,
     ) -> ActionResult:
-        src_rel = params.get("source")
-        dst_rel = params.get("destination")
+        # Support both "source/destination" and "path/target_folder" parameter names
+        src_rel = params.get("source") or params.get("path")
+        dst_rel = params.get("destination") or params.get("target_folder")
         if isinstance(src_rel, str):
             src_rel = src_rel.strip()
         if isinstance(dst_rel, str):
@@ -2076,6 +2085,7 @@ class ActionSupervisor:
             status=ActionStatus.SUCCESS,
             message=f"Folder moved: {src_rel} -> {dst_rel}",
             data={"source": src_rel, "destination": dst_rel},
+            modified_files=[str(src), str(dst)],
         )
 
     def _handle_copy_folder(
@@ -2084,8 +2094,9 @@ class ActionSupervisor:
         context: ActionContext,
         transaction: TransactionManager,
     ) -> ActionResult:
-        src_rel = params.get("source")
-        dst_rel = params.get("destination")
+        # Support both "source/destination" and "path/new_path" parameter names
+        src_rel = params.get("source") or params.get("path")
+        dst_rel = params.get("destination") or params.get("new_path")
         if isinstance(src_rel, str):
             src_rel = src_rel.strip()
         if isinstance(dst_rel, str):
@@ -2128,6 +2139,7 @@ class ActionSupervisor:
             status=ActionStatus.SUCCESS,
             message=f"Folder copied: {src_rel} -> {dst_rel}",
             data={"source": src_rel, "destination": dst_rel},
+            modified_files=[str(dst)],
         )
 
     # ------------------------------------------------------------------ #

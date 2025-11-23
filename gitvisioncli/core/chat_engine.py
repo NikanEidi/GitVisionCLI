@@ -28,9 +28,12 @@ from gitvisioncli.core.planner import ActionPlanner, PlanStepType
 from gitvisioncli.core.natural_language_mapper import (
     NaturalLanguageEditMapper,
     FileContext,
+    LiveEditIntent,
 )
 from gitvisioncli.core.provider_normalizer import ProviderNormalizer
 from gitvisioncli.core.brain import Brain
+from gitvisioncli.core.action_router import ActionRouter
+from gitvisioncli.core.natural_language_action_engine import ActiveFileContext
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +190,12 @@ class ChatEngine:
         self._provider_normalizer = ProviderNormalizer()
         self._nl_mapper = NaturalLanguageEditMapper()
         self._brain = Brain(base_dir=Path(base_dir))
+        
+        # Natural Language Action Engine integration
+        self._action_router = ActionRouter(base_dir=self.base_dir)
+        
+        # Editor panel reference for streaming support (set by CLI)
+        self._editor_panel_ref = None
 
         # Apply any persisted model preference for this project.
         try:
@@ -559,7 +568,47 @@ NEVER reveal chain-of-thought.
 NEVER break JSON.
 NEVER hallucinate files, paths, lines, git state, or GitHub remotes.
 
-You operate as GitVision’s unified, deterministic, provider-independent intelligence core inside the terminal IDE."""
+You operate as GitVision's unified, deterministic, provider-independent intelligence core inside the terminal IDE.
+
+============================================================
+NATURAL LANGUAGE ACTION ENGINE INTEGRATION
+============================================================
+
+GitVision includes a Natural Language Action Engine that converts user messages
+directly to structured action JSON BEFORE invoking AI models. This provides:
+
+1. FAST, DETERMINISTIC ACTION CONVERSION
+   - Simple commands like "remove line 5" are converted instantly
+   - No AI model call needed for straightforward operations
+   - Works with ALL model types (GPT, Gemini, Claude, LLaMA, etc.)
+
+2. ZERO CLARIFICATION QUESTIONS
+   - Engine ALWAYS infers intent from context
+   - Active file context is automatically used
+   - Broken grammar is automatically fixed ("line1" → "line 1")
+
+3. COMPREHENSIVE ACTION SUPPORT
+   - File operations: CreateFile, DeleteFile, ReadFile, RenameFile, MoveFile, CopyFile
+   - Line editing: DeleteLineRange, ReplaceBlock, InsertAfterLine, InsertAtBottom
+   - Git operations: GitInit, GitAdd, GitCommit, GitBranch, GitCheckout, GitMerge
+   - GitHub operations: GitHubCreateRepo, GitHubCreateIssue, GitHubCreatePR
+
+4. ACTIVE FILE AWARENESS
+   - When a file is open, ALL line-based commands apply to that file
+   - No need to specify file path for active file operations
+   - Context is automatically passed to the action engine
+
+5. DOCUMENTATION AUTO-SYNC
+   - After ANY file change, documentation is automatically updated
+   - README.md, COMMANDS.md, QUICKSTART.md, FEATURES.md stay in sync
+   - No manual documentation updates needed
+
+If a user message can be converted directly to an action, it will be executed
+immediately without AI processing. Only complex or ambiguous requests will
+fall through to AI model processing.
+
+You should still use execute_action for all operations, but be aware that
+simple natural language commands may already be handled by the direct engine."""
 
     # --------------------------------------------------------------------------------------
     # PROVIDER / MODEL HELPERS
@@ -732,6 +781,10 @@ You operate as GitVision’s unified, deterministic, provider-independent intell
 
     def set_system_prompt(self, prompt: str) -> None:
         self.context.system_prompt = prompt
+    
+    def set_editor_panel(self, editor_panel) -> None:
+        """Set editor panel reference for streaming support."""
+        self._editor_panel_ref = editor_panel
 
     # --------------------------------------------------------------------------------------
     # WORKSPACE SYNC
@@ -820,106 +873,96 @@ You operate as GitVision’s unified, deterministic, provider-independent intell
         await self._auto_prune_if_needed()
 
         # ----------------------------------------------------
-        # SIMPLE DETERMINISTIC NAVIGATION + FOLDER CREATION
+        # NATURAL LANGUAGE ACTION ENGINE - DIRECT CONVERSION
         # ----------------------------------------------------
-        # For very simple commands like "create folder demo" or
-        # "go to hi folder", perform direct actions without invoking
-        # any model. This keeps behaviour deterministic and avoids
-        # tool calls that forget required parameters.
-        if "\n" not in user_input:
-            simple_lower = user_input.lower().strip()
-
-            # Simple ChangeDirectory from natural language, e.g.:
-            # "go to hi folder", "go to hi directory"
-            cd_path = self._extract_simple_cd_path(user_input)
-            if cd_path:
-                action = {"type": "ChangeDirectory", "params": {"path": cd_path}}
-                result = self.executor.run_action(action, ActionContext())
-                if result.status == ActionStatus.SUCCESS:
-                    yield f"✓ {result.message}\n"
-                else:
-                    err = result.error or ""
-                    if err:
-                        yield f"✗ {result.message}: {err}\n"
-                    else:
-                        yield f"✗ {result.message}\n"
-                return
-
-            # Simple CreateFolder, e.g.:
-            # "create folder demo",
-            # "create folder in this dir call it demo"
-            if "create folder" in simple_lower and " and " not in simple_lower:
-                folder_name = self._extract_simple_folder_name(user_input)
-                if folder_name:
-                    action = {"type": "CreateFolder", "params": {"path": folder_name}}
-                    result = self.executor.run_action(action, ActionContext())
-                    self._track_last_modified(action, result)
-                    if result.status == ActionStatus.SUCCESS:
-                        yield f"✓ {result.message}\n"
-                    else:
-                        err = result.error or ""
-                        if err:
-                            yield f"✗ {result.message}: {err}\n"
-                        else:
-                            yield f"✗ {result.message}\n"
-                    return
-
-        # ----------------------------------------------------
-        # DIRECT, DETERMINISTIC EDIT MAPPING (UNCERTAINTY SAFETY)
-        # ----------------------------------------------------
-        # For clearly edit-like instructions with an active file, try to
-        # map the request directly into structured edit intents without
-        # invoking any model. This prevents ambiguous destructive edits
-        # and keeps behavior deterministic.
-        lower = user_input.lower()
-        edit_keywords = [
-            "line ",
-            "lines ",
-            "insert",
-            "delete",
-            "remove",
-            "replace",
-            "function",
-            "block",
-            "json key",
-            "yaml key",
-        ]
-        is_edit_like = any(k in lower for k in edit_keywords)
-
-        if is_edit_like and self.context.active_file_path:
+        # Try to convert user message directly to action JSON without AI.
+        # This is fast, deterministic, and works with all model types.
+        active_file_ctx = None
+        if self.context.active_file_path:
             try:
                 base = self.get_base_dir()
                 path = Path(self.context.active_file_path)
                 if not path.is_absolute():
                     path = (base / path).resolve()
-                content = path.read_text(encoding="utf-8", errors="ignore")
-                file_ctx = FileContext(path=str(path), content=content)
-                mapping = self._nl_mapper.map_instruction(
-                    user_input, active_file=file_ctx, attached_block=None
+                content = None
+                if path.exists():
+                    content = path.read_text(encoding="utf-8", errors="ignore")
+                active_file_ctx = ActiveFileContext(
+                    path=str(path),
+                    content=content
                 )
-            except Exception:
-                mapping = None
-
-            if mapping is not None:
-                if mapping.error:
-                    yield f"⚠️ {mapping.error}\n"
-                    return
-                if mapping.clarification:
-                    # Ask exactly one clarification question and stop; do
-                    # not perform any edits when uncertain.
-                    yield mapping.clarification + "\n"
-                    return
-                if mapping.intents:
-                    yield "[Executing direct edit]\n\n"
-                    for intent in mapping.intents:
-                        action = {"type": intent.type, "params": intent.params}
-                        result = self.executor.run_action(action, ActionContext())
-                        self._track_last_modified(action, result)
-                        if result.status == ActionStatus.SUCCESS:
-                            yield f"✓ {result.message}\n"
+            except Exception as e:
+                logger.debug(f"Failed to build active file context: {e}")
+        
+        # Try direct action conversion
+        direct_action = self._action_router.try_direct_action(
+            user_input,
+            active_file=active_file_ctx
+        )
+        
+        if direct_action:
+            # Handle special UI commands (like ShowGitGraph) that don't go through executor
+            # These are handled by CLI layer before reaching here, but we check anyway
+            if direct_action.get("type") == "ShowGitGraph":
+                # CLI should have already handled this, but yield message if we get here
+                yield "Git graph command detected.\n"
+                return
+            
+            # Handle compound actions (e.g., CreateFolderAndCD)
+            if direct_action.get("type") == "CreateFolderAndCD":
+                folder_path = direct_action.get("params", {}).get("path")
+                if folder_path:
+                    # First create the folder
+                    create_result = self.executor.run_action(
+                        {"type": "CreateFolder", "params": {"path": folder_path}},
+                        ActionContext()
+                    )
+                    if create_result.status == ActionStatus.SUCCESS:
+                        yield f"✓ {create_result.message}\n"
+                        # Then change directory to it
+                        cd_result = self.executor.run_action(
+                            {"type": "ChangeDirectory", "params": {"path": folder_path}},
+                            ActionContext()
+                        )
+                        if cd_result.status == ActionStatus.SUCCESS:
+                            yield f"✓ {cd_result.message}\n"
                         else:
-                            yield f"✗ {result.message}: {result.error}\n"
+                            yield f"✗ Failed to change directory: {cd_result.error}\n"
+                    else:
+                        yield f"✗ {create_result.message}: {create_result.error}\n"
                     return
+            
+            # Execute action directly, skip AI
+            logger.info(f"Direct action conversion: {direct_action['type']}")
+            result = self.executor.run_action(direct_action, ActionContext())
+            
+            # Sync documentation after action (executor already does this, but ensure it's called)
+            if result.modified_files:
+                modified_paths = [Path(f) for f in result.modified_files]
+                self._action_router.sync_after_action(
+                    direct_action.get("type", ""),
+                    modified_paths
+                )
+            
+            # Track last modified for UI sync
+            self._track_last_modified(direct_action, result)
+            
+            # Yield result
+            if result.status == ActionStatus.SUCCESS:
+                yield f"✓ {result.message}\n"
+            elif result.status == ActionStatus.DRY_RUN:
+                yield f"[DRY RUN] {result.message}\n"
+            else:
+                err = result.error or ""
+                if err:
+                    yield f"✗ {result.message}: {err}\n"
+                else:
+                    yield f"✗ {result.message}\n"
+            return
+
+        # OLD LOGIC REMOVED - All natural language conversion now handled by ActionRouter above
+        # This ensures single, unified path for all action conversion
+        # ActionRouter handles: file ops, git ops, GitHub ops, line edits, folder creation, etc.
 
         # ----------------------------------------------------
         # PLANNING MODE (OpenAI-driven)
@@ -1122,16 +1165,34 @@ You operate as GitVision’s unified, deterministic, provider-independent intell
             )
 
             follow_txt = ""
+            # Check if we should stream to editor panel (if active file is open)
+            editor_panel = None
+            if hasattr(self, '_editor_panel_ref') and self._editor_panel_ref:
+                editor_panel = self._editor_panel_ref
+            
             async for chunk in follow_stream:
                 if not chunk.choices:
                     continue
                 d = chunk.choices[0].delta
                 if d and getattr(d, "content", None):
-                    follow_txt += d.content
-                    yield d.content
+                    content = d.content
+                    follow_txt += content
+                    # Stream to editor if available and in editor mode
+                    if editor_panel and hasattr(editor_panel, 'write_stream'):
+                        try:
+                            editor_panel.write_stream(content)
+                        except Exception as e:
+                            logger.debug(f"Editor streaming failed: {e}")
+                    yield content
 
             if follow_txt:
                 self.context.add_message("assistant", follow_txt)
+                # Finish streaming to editor
+                if editor_panel and hasattr(editor_panel, 'finish_stream'):
+                    try:
+                        editor_panel.finish_stream()
+                    except Exception as e:
+                        logger.debug(f"Editor finish_stream failed: {e}")
 
             return
 
@@ -1163,6 +1224,9 @@ You operate as GitVision’s unified, deterministic, provider-independent intell
             ]
         )
 
+        # Check if we should stream to editor panel
+        editor_panel = self._editor_panel_ref
+        
         try:
             reply_text = await self._complete_via_provider(
                 messages_for_provider,
@@ -1179,6 +1243,22 @@ You operate as GitVision’s unified, deterministic, provider-independent intell
             self.context.add_message("assistant", msg)
             yield msg
             return
+
+        # Stream reply_text to editor if available (for live typing effect)
+        if reply_text and editor_panel and hasattr(editor_panel, 'write_stream'):
+            try:
+                # Stream character by character for live typing effect
+                for char in reply_text:
+                    editor_panel.write_stream(char)
+                    yield char
+                editor_panel.finish_stream()
+            except Exception as e:
+                logger.debug(f"Editor streaming failed: {e}")
+                # Fall back to normal yield
+                yield reply_text
+        elif reply_text:
+            # Normal yield if no editor or streaming not available
+            yield reply_text
 
         if not reply_text:
             # Provide a more actionable message for "empty" completions

@@ -222,8 +222,8 @@ class RightPanel:
                 self.panel_manager.set_mode(PanelMode.BANNER)
                 return True, "Banner view restored."
 
-            # Git commit graph
-            if cmd == ":gitgraph":
+            # Git commit graph (support both :gitgraph and :git-graph)
+            if cmd in {":gitgraph", ":git-graph"}:
                 self.panel_manager.clear_file()
                 self.panel_manager.set_mode(PanelMode.GIT_GRAPH)
                 return True, "Git commit graph opened."

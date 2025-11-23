@@ -8,7 +8,7 @@ ActionSupervisor (GitRepoState + _run_git_command) via a small public API.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from gitvisioncli.ui.colors import (
     BOLD,
@@ -17,7 +17,11 @@ from gitvisioncli.ui.colors import (
     MID_GRAY,
     ELECTRIC_CYAN,
     NEON_PURPLE,
+    BRIGHT_MAGENTA,
 )
+
+if TYPE_CHECKING:
+    from gitvisioncli.core.supervisor import ActionSupervisor
 
 
 @dataclass

@@ -451,6 +451,9 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
 
         # Set initial workspace context for the AI
         engine.update_workspace_context(right_panel.get_workspace_context())
+        
+        # Wire editor panel reference for streaming support
+        engine.set_editor_panel(right_panel.editor_panel)
 
     # --- ONE-TIME AUTO CLEAR (like user typing `clear`, but only once) ---
     _soft_reset_workspace(conversation, engine, right_panel)
@@ -773,6 +776,28 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                 _render_ui(renderer, conversation, engine)
                 continue
 
+            # --- 8.5. HANDLE SHOW GIT GRAPH (from Natural Language Action Engine) ---
+            # Check for "git graph" command and route to panel before sending to AI
+            if enable_workspace and right_panel:
+                from gitvisioncli.core.action_router import ActionRouter
+                from gitvisioncli.core.natural_language_action_engine import ActiveFileContext
+                
+                action_router = ActionRouter(base_dir=engine.get_base_dir())
+                ws_ctx = right_panel.get_workspace_context()
+                active_file_ctx = None
+                if ws_ctx.get("active_file"):
+                    active_file_ctx = ActiveFileContext(
+                        path=ws_ctx["active_file"],
+                        content=ws_ctx.get("file_content")
+                    )
+                
+                direct_action = action_router.try_direct_action(user_input, active_file=active_file_ctx)
+                if direct_action and direct_action.get("type") == "ShowGitGraph":
+                    right_panel.panel_manager.open_git_graph()
+                    conversation.add_system("Git commit graph opened.")
+                    _render_ui(renderer, conversation, engine)
+                    continue
+
             # --- 9. SEND TO AI (DEFAULT PATH) ---
             conversation.add_user(user_input)
 
@@ -782,6 +807,8 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
 
             if enable_workspace and right_panel:
                 engine.update_workspace_context(right_panel.get_workspace_context())
+                # Update editor panel reference for streaming
+                engine.set_editor_panel(right_panel.editor_panel)
 
             chunks = []
             response_text = ""
@@ -862,14 +889,18 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
 
                 # Auto-open the last file modified by INTERNAL actions so
                 # the user immediately sees live updates in the editor.
+                # Only open if it's actually a file (not a folder).
                 try:
                     last_path = engine.get_last_modified_path()
                     if last_path is not None:
-                        right_panel.editor_panel.load_file(last_path)
-                        right_panel.panel_manager.open_file(last_path)
-                        right_panel.panel_manager.set_mode(PanelMode.EDITOR)
+                        path_obj = Path(last_path)
+                        # Only open files, not folders
+                        if path_obj.exists() and path_obj.is_file():
+                            right_panel.editor_panel.load_file(path_obj)
+                            right_panel.panel_manager.open_file(path_obj)
+                            right_panel.panel_manager.set_mode(PanelMode.EDITOR)
                 except Exception as editor_sync_err:
-                    logger.warning(f"Editor sync after AI response failed: {editor_sync_err}")
+                    logger.debug(f"Editor sync after AI response skipped: {editor_sync_err}")
 
             # After AI finishes, render a clean final frame (input line cleared)
             _render_ui(renderer, conversation, engine)

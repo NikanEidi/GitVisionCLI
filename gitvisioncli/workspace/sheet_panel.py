@@ -60,10 +60,10 @@ class CommandSheetPanel:
             (":markdown <file>", "Preview markdown file with rendering"),
             (":sheet / :commands", "Show this live command sheet"),
             (":models", "AI Model Manager (engines, models, API keys)"),
-            (":gitgraph", "Git commit graph visualization"),
-            (":live-edit", "AI Live Editor Mode (edit open file via AI)"),
+            (":git-graph / :gitgraph", "Git commit graph visualization"),
+            (":live-edit <file>", "AI Live Editor Mode (edit file via AI)"),
             (":save", "Save current editor buffer to disk"),
-            (":close", "Close right panel and return to banner"),
+            (":close / :x", "Close right panel and return to banner"),
         ]
         lines: List[str] = []
         for cmd, desc in cmds:
@@ -80,6 +80,43 @@ class CommandSheetPanel:
             ("↑ / ↓", "Navigate command history"),
             ("Tab", "Autocomplete (if available)"),
         ]
+        lines: List[str] = []
+        for key, desc in shortcuts:
+            k = f"{BOLD}{BRIGHT_MAGENTA}{key:<12}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {k} {d}")
+        return lines
+    
+    def _navigation_commands(self) -> List[str]:
+        """Navigation and workspace control commands."""
+        cmds = [
+            ("cd <path>", "Change directory (or 'cd ..' to go up)"),
+            ("pwd", "Print current working directory"),
+            ("clear", "Clear console screen"),
+            ("stats", "Show workspace statistics"),
+            ("exit / quit", "Exit GitVisionCLI"),
+        ]
+        lines: List[str] = []
+        for cmd, desc in cmds:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<20}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        return lines
+    
+    def _editor_scroll_commands(self) -> List[str]:
+        """Editor scrolling commands (when in editor mode)."""
+        cmds = [
+            (":up / :scroll-up", "Scroll editor view up"),
+            (":down / :scroll-down", "Scroll editor view down"),
+            (":pageup / :pu", "Scroll editor one page up"),
+            (":pagedown / :pd", "Scroll editor one page down"),
+        ]
+        lines: List[str] = []
+        for cmd, desc in cmds:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<20}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        return lines
         lines: List[str] = []
         for key, desc in shortcuts:
             k = f"{BOLD}{BRIGHT_MAGENTA}{key:<12}{RESET}"
@@ -286,23 +323,42 @@ class CommandSheetPanel:
         lines += self._ai_engine_commands()
         lines.append("")
 
+        # Navigation & Workspace
+        lines += self._section_header("🧭 Navigation & Workspace")
+        lines.append("")
+        lines += self._navigation_commands()
+        lines.append("")
+        
+        # Editor Scrolling
+        lines += self._section_header("📜 Editor Scrolling (Editor Mode)")
+        lines.append("")
+        lines += self._editor_scroll_commands()
+        lines.append("")
+        
         # Keyboard shortcuts
         lines += self._section_header("⌨️  Keyboard Shortcuts")
         lines.append("")
         lines += self._keyboard_shortcuts()
         lines.append("")
 
-        # Git commands section
-        lines += self._section_header("🔁 Git Commands (Natural Language)")
+        # Git commands section (legacy - now covered in Natural Language section)
+        lines += self._section_header("🔁 Git Commands (All Methods)")
+        lines.append("")
+        lines.append(
+            f"{DIM}{DARK_GRAY}Use natural language, :git-graph command, or AI for Git operations:{RESET}"
+        )
         lines.append("")
         git_cmds = [
-            ("git init", "Initialize new repository"),
-            ("git status", "Check repository status"),
-            ("git add <files>", "Stage files for commit"),
-            ("git commit", "Commit staged changes"),
-            ("git log / git graph", "View commit history"),
-            ("git branch / git checkout", "Branch management"),
-            ("git push / git pull", "Remote sync operations"),
+            (":git-graph", "Open Git graph panel (or :gitgraph, or 'git graph')"),
+            ("git init", "Initialize repository (direct NLAE)"),
+            ("git add <files>", "Stage files (direct NLAE)"),
+            ("git commit 'message'", "Commit with message (direct NLAE)"),
+            ("git branch <name>", "Create branch (direct NLAE)"),
+            ("git checkout <branch>", "Switch branch (direct NLAE)"),
+            ("git merge <branch>", "Merge branch (direct NLAE)"),
+            ("git graph", "Open Git graph panel (natural language)"),
+            ("git push / git pull", "Remote sync (via AI)"),
+            ("git status / git log", "View status/history (via AI)"),
         ]
         for cmd, desc in git_cmds:
             c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
@@ -310,14 +366,126 @@ class CommandSheetPanel:
             lines.append(f"  {c} {d}")
         lines.append("")
 
+        # Natural Language Commands (Direct Action Engine)
+        lines += self._section_header("💬 Natural Language Commands (Direct)")
+        lines.append("")
+        lines.append(
+            f"{DIM}{DARK_GRAY}These commands work instantly without AI (via Natural Language Action Engine):{RESET}"
+        )
+        lines.append("")
+        
+        nl_file_ops = [
+            ("create file <path>", "Create new file"),
+            ("read file <path>", "Read/display file content"),
+            ("delete file <path>", "Delete file"),
+            ("rename <old> to <new>", "Rename file"),
+            ("move <file> to <folder>", "Move file to folder"),
+            ("copy <file> to <new>", "Copy file"),
+            ("open <file>", "Open file in editor"),
+        ]
+        for cmd, desc in nl_file_ops:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        lines.append("")
+        
+        lines.append(
+            f"{DIM}{DARK_GRAY}Folder operations:{RESET}"
+        )
+        lines.append("")
+        nl_folder_ops = [
+            ("create folder <path>", "Create new folder/directory"),
+            ("delete folder <path>", "Delete folder/directory"),
+            ("move folder <path> to <target>", "Move folder to new location"),
+            ("copy folder <path> to <new>", "Copy folder"),
+            ("rename folder <old> to <new>", "Rename folder"),
+        ]
+        for cmd, desc in nl_folder_ops:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        lines.append("")
+        
+        lines.append(
+            f"{DIM}{DARK_GRAY}Line editing (when file is open in editor):{RESET}"
+        )
+        lines.append("")
+        nl_line_ops = [
+            ("remove line 5", "Delete single line (also: rm 5, delete line1)"),
+            ("delete lines 4-9", "Delete line range (also: remove lines 4 to 9)"),
+            ("replace line 3 with <text>", "Replace line content"),
+            ("add <text> at line 10", "Insert at specific line (after line 10)"),
+            ("add <text> at bottom", "Append to end of file"),
+            ("insert <text> at line 5", "Insert before line 5"),
+        ]
+        for cmd, desc in nl_line_ops:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        lines.append("")
+        
+        lines.append(
+            f"{DIM}{DARK_GRAY}Git operations:{RESET}"
+        )
+        lines.append("")
+        nl_git_ops = [
+            (":git-graph", "Open Git graph panel (command)"),
+            ("git graph", "Open Git graph panel (natural language)"),
+            ("git init", "Initialize repository"),
+            ("git add <files>", "Stage files (or 'git add .' for all)"),
+            ("git commit 'message'", "Commit with message"),
+            ("git branch <name>", "Create new branch"),
+            ("git checkout <branch>", "Switch to branch (or 'go to <branch>')"),
+            ("git merge <branch>", "Merge branch"),
+        ]
+        for cmd, desc in nl_git_ops:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        lines.append("")
+        
+        lines.append(
+            f"{DIM}{DARK_GRAY}GitHub operations:{RESET}"
+        )
+        lines.append("")
+        nl_github_ops = [
+            ("create github repo <name>", "Create GitHub repository (public/private)"),
+            ("create github issue 'title'", "Create GitHub issue with title"),
+            ("create github pr 'title'", "Create pull request with title"),
+        ]
+        for cmd, desc in nl_github_ops:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        lines.append("")
+        
+        lines.append(
+            f"{DIM}{DARK_GRAY}Directory navigation:{RESET}"
+        )
+        lines.append("")
+        nl_dir_ops = [
+            ("cd <path>", "Change directory"),
+            ("cd ..", "Go up one directory"),
+            ("pwd", "Show current directory"),
+            ("create folder X and go to it", "Create folder + change directory"),
+        ]
+        for cmd, desc in nl_dir_ops:
+            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            d = f"{DIM}{MID_GRAY}{desc}{RESET}"
+            lines.append(f"  {c} {d}")
+        lines.append("")
+        
         # Editor shortcuts
-        lines += self._section_header("✏️  Editor Tips")
+        lines += self._section_header("✏️  Editor Tips & Features")
         lines.append("")
         editor_tips = [
-            ("Use :live-edit", "AI edits the currently open file in real-time"),
+            ("Use :live-edit <file>", "AI edits the file in real-time with streaming"),
             ("Natural edits", "Say: 'add hello world after line 5'"),
             ("Line references", "AI understands line numbers when file is open"),
             ("Auto-save", "Changes auto-sync to UI when saved"),
+            ("Grammar fix", "Broken grammar auto-fixed (line1→line 1, rm 5→remove line 5)"),
+            ("Streaming writes", "AI text streams token-by-token into editor"),
+            ("No questions", "AI never asks questions when file is open"),
         ]
         for tip, desc in editor_tips:
             t = f"{BOLD}{BRIGHT_MAGENTA}{tip:<22}{RESET}"
@@ -326,9 +494,17 @@ class CommandSheetPanel:
         lines.append("")
 
         # Action types
-        lines += self._section_header("🔧 AI Action Types (execute_action)")
+        lines += self._section_header("🔧 All Supported Action Types")
+        lines.append("")
+        lines.append(
+            f"{DIM}{DARK_GRAY}All actions below work via AI (execute_action). Many also work directly via NLAE:{RESET}"
+        )
         lines.append("")
         lines += self._action_types()
+        lines.append("")
+        lines.append(
+            f"{DIM}{DARK_GRAY}Advanced actions (UpdateJSONKey, InsertIntoFunction, etc.) work via AI model calls.{RESET}"
+        )
         lines.append("")
 
         footer = f"{DIM}{DARK_GRAY}Use :close to return to the workspace banner.{RESET}"

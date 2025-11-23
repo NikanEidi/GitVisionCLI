@@ -174,3 +174,9 @@ class PanelManager:
             "active_file": active_path_str,
             "is_modified": self.is_modified,
         }
+    
+    def open_git_graph(self) -> None:
+        """Open Git Graph panel."""
+        self.clear_file()
+        self.set_mode(PanelMode.GIT_GRAPH)
+        logger.debug("PanelManager: Git Graph opened")

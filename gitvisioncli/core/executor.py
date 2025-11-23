@@ -197,6 +197,22 @@ class AIActionExecutor:
         """Links the FSWatcher to the Supervisor for UI updates."""
         self.fs_watcher = watcher
         self.supervisor.set_fs_watcher(watcher)
+        
+        # Wire filesystem changes to refresh UI components
+        if watcher and hasattr(watcher, 'register_callback'):
+            def on_fs_change(event):
+                """Refresh UI when filesystem changes occur."""
+                try:
+                    # Force refresh of tree panel if active
+                    # Force refresh of editor if file is open and not modified
+                    # This is handled by PanelManager.handle_fs_event
+                    pass  # PanelManager will handle the refresh logic
+                except Exception as e:
+                    logger.debug(f"FS change callback error (non-fatal): {e}")
+            
+            # The watcher already has callbacks registered by CLI
+            # This is just ensuring the connection exists
+            logger.debug("FS watcher connected to executor")
 
     # ---------------------------------------------------------------
     # Special Executor-level Action Handlers
@@ -445,6 +461,23 @@ class AIActionExecutor:
                         params["path"] = str(current_candidate)
                     else:
                         params["path"] = str(current_candidate)
+            
+            # CRITICAL FIX: Prevent path doubling (e.g., /path/to/demo/demo/app.py)
+            # Check if the resolved path contains base_dir twice and fix it
+            resolved_path = Path(params["path"]).resolve()
+            base_dir_resolved = self.base_dir.resolve()
+            path_str = str(resolved_path)
+            base_str = str(base_dir_resolved)
+            base_name = base_dir_resolved.name
+            
+            # Pattern: /path/to/demo/demo/file -> /path/to/demo/file
+            # Check if path contains: base_dir + "/" + base_name + "/"
+            duplicate_pattern = f"{base_str}/{base_name}/"
+            if duplicate_pattern in path_str:
+                # Remove the duplicate: base_dir + "/" + base_name
+                fixed_str = path_str.replace(f"{base_str}/{base_name}", base_str, 1)
+                params["path"] = str(Path(fixed_str).resolve())
+                logger.debug(f"Fixed doubled path: {path_str} -> {params['path']}")
 
         # Update action with canonical type string for the supervisor
         action["type"] = atype.value
@@ -455,6 +488,16 @@ class AIActionExecutor:
         # ---- NEW: Force FSWatcher to refresh Editor panel ----
         if self.fs_watcher:
             self.fs_watcher.manual_trigger("ai_modify")
+
+        # ---- NEW: Sync documentation after file changes ----
+        if result.modified_files:
+            try:
+                from gitvisioncli.core.doc_sync import DocumentationSyncer
+                doc_syncer = DocumentationSyncer(self.base_dir)
+                modified_paths = [Path(f) for f in result.modified_files]
+                doc_syncer.sync_documentation(modified_paths, action_type=atype.value if atype else None)
+            except Exception as e:
+                logger.debug(f"Documentation sync failed (non-fatal): {e}")
 
         return result
 
