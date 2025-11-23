@@ -1,5 +1,16 @@
 # 🚀 How to Run & Test GitVisionCLI
 
+**Comprehensive guide for running, testing, and validating GitVisionCLI.**
+
+<div align="center">
+
+[![Testing](https://img.shields.io/badge/Testing-Comprehensive-blue.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+
+</div>
+
+---
+
 ## 📦 **Installation**
 
 ### **Step 1: Install Dependencies**
@@ -38,26 +49,22 @@ cd /path/to/GitVisionCLI
 python3 -m gitvisioncli.cli
 ```
 
-### **Option 3: Use Quick Start Script**
-
-```bash
-# Make executable (first time only)
-chmod +x QUICK_START.sh
-
-# Run it
-./QUICK_START.sh
-```
-
 ### **Set API Key (Required)**
 
 ```bash
 # Choose at least one AI provider
 export OPENAI_API_KEY="sk-..."              # For GPT-4/GPT-4o-mini
 export ANTHROPIC_API_KEY="sk-ant-..."       # For Claude
-export GOOGLE_API_KEY="..."                 # For Gemini
+export GOOGLE_API_KEY="..."                 # For Gemini (get from https://makersuite.google.com/app/apikey)
 
 # Optional: GitHub integration
 export GITHUB_TOKEN="ghp_..."
+```
+
+**Note:** After setting Gemini API key, switch to Gemini:
+```bash
+gitvision
+:set-ai gemini-1.5-pro
 ```
 
 ---
@@ -68,6 +75,12 @@ export GITHUB_TOKEN="ghp_..."
 
 ```bash
 gitvision
+```
+
+### **Interactive Mode**
+
+```bash
+gitvision interactive
 ```
 
 ### **With Options**
@@ -101,6 +114,7 @@ gitvision
 :banner          # Should show banner with logo
 :sheet           # Should show complete command sheet
 :tree            # Should show file tree
+:models          # Should show model manager
 :close           # Should return to banner
 ```
 
@@ -109,6 +123,8 @@ gitvision
 - ✅ All panels render correctly
 - ✅ Colors are consistent (neon purple, cyan, magenta)
 - ✅ No errors in console
+- ✅ Smooth transitions between panels
+- ✅ No flicker or duplicate rendering
 
 ---
 
@@ -139,6 +155,7 @@ delete file hello_backup.txt
 - ✅ No clarification questions asked
 - ✅ Files created/deleted correctly
 - ✅ Success messages appear
+- ✅ File paths resolve correctly
 
 ---
 
@@ -164,6 +181,7 @@ delete folder test
 - ✅ "create folder X and go to it" works (creates + cd)
 - ✅ No "Path is not a file" errors
 - ✅ Directory changes correctly
+- ✅ Folder deletion works
 
 ---
 
@@ -189,10 +207,11 @@ add print("End") at bottom
 
 **Expected Results:**
 - ✅ Editor opens file correctly
-- ✅ Line numbers displayed
+- ✅ Line numbers displayed with vibrant colors
 - ✅ All line operations work instantly
 - ✅ Grammar fixes work (line1→line 1, rm 5→remove line 5)
 - ✅ No questions asked when file is open
+- ✅ Changes reflect immediately
 
 ---
 
@@ -225,6 +244,8 @@ git graph
 - ✅ :git-graph command opens graph panel
 - ✅ "git graph" natural language works
 - ✅ Graph panel shows commit history
+- ✅ Branch operations work correctly
+- ✅ Status and log display correctly
 
 ---
 
@@ -246,6 +267,8 @@ git graph
 - ✅ Editor updates in real-time
 - ✅ No lag or delays
 - ✅ Streaming finishes cleanly
+- ✅ No duplicate outputs
+- ✅ Proper cleanup on completion
 
 ---
 
@@ -280,29 +303,54 @@ exit
 
 ---
 
-### **8. Editor Scrolling** ✅
+### **8. Shell Commands** ✅
 
 ```bash
-# Open a large file
-:edit large_file.py
-
-# Test scrolling
-:up
-:down
-:pageup
-:pagedown
-:scroll-up
-:scroll-down
+# Test various shell commands
+ls
+ls -la
+cat app.py
+grep "def" app.py
+find . -name "*.py"
+python app.py
+node server.js
+pip install requests
 ```
 
 **Expected Results:**
-- ✅ All scroll commands work
-- ✅ Viewport moves correctly
-- ✅ Only works in editor mode (error if not)
+- ✅ All shell commands work directly
+- ✅ No AI overhead for shell commands
+- ✅ Output displayed correctly
+- ✅ Exit codes handled properly
 
 ---
 
-### **9. AI Model Switching** ✅
+### **9. Natural Language Commands** ✅
+
+```bash
+# Search
+search for "TODO"
+search for "def" in app.py
+
+# Find
+find files named "test"
+list files in src/
+
+# Run
+run app.py
+debug buggy.py
+test test_suite.py
+```
+
+**Expected Results:**
+- ✅ Search works correctly
+- ✅ Find files works
+- ✅ Run scripts auto-detects type
+- ✅ Debug and test commands work
+
+---
+
+### **10. AI Model Switching** ✅
 
 ```bash
 # View available models
@@ -311,7 +359,8 @@ exit
 # Switch model
 :set-ai gpt-4o-mini
 :set-ai gemini-1.5-pro
-:set-ai claude-3.5-sonnet
+:set-ai claude-3-5-sonnet
+:set-ai llama2
 
 # Check stats
 stats
@@ -322,10 +371,11 @@ stats
 - ✅ Model switching works
 - ✅ Stats show current model
 - ✅ AI responses use new model
+- ✅ All models support streaming
 
 ---
 
-### **10. Multi-line Input** ✅
+### **11. Multi-line Input** ✅
 
 ```bash
 # Test multi-line mode
@@ -344,10 +394,11 @@ def complex_function():
 - ✅ Multi-line input works
 - ✅ File created with all lines
 - ✅ No truncation
+- ✅ Proper formatting preserved
 
 ---
 
-### **11. Path Resolution (No Doubling)** ✅
+### **12. Path Resolution (No Doubling)** ✅
 
 ```bash
 # Create folder
@@ -368,23 +419,6 @@ pwd
 - ✅ No path doubling (demo/demo → demo)
 - ✅ Files created in correct location
 - ✅ Paths resolve correctly
-
----
-
-### **12. Documentation Auto-Sync** ✅
-
-```bash
-# Create a new file
-create file new_feature.py
-
-# Check if docs updated
-read file README.md
-read file docs/COMMANDS.md
-```
-
-**Expected Results:**
-- ✅ Documentation files update automatically
-- ✅ No manual doc updates needed
 
 ---
 
@@ -442,6 +476,28 @@ create github pr "Add new feature"
 - ✅ GitHub operations work (if token set)
 - ✅ Repos created successfully
 - ✅ Issues/PRs created
+- ✅ Error messages helpful if token missing
+
+---
+
+### **16. AI Streaming & Tools** ✅
+
+```bash
+# Test streaming
+:edit app.py
+explain this file
+# Watch response stream token-by-token
+
+# Test tool calling
+create a test file for app.py
+# Should execute file creation tool
+```
+
+**Expected Results:**
+- ✅ Streaming works for all models
+- ✅ Tool calling works correctly
+- ✅ No duplicate outputs
+- ✅ Proper error handling
 
 ---
 
@@ -479,11 +535,24 @@ git commit "Initial commit"
 remove line 1
 add print("Test") at bottom
 
-# 8. Save and verify
+# 8. Test shell commands
+ls
+cat main.py
+grep "print" main.py
+
+# 9. Test natural language
+search for "print"
+find files named "main"
+
+# 10. Test AI
+explain the file main.py
+find bugs
+
+# 11. Save and verify
 :save
 read file main.py
 
-# 9. Cleanup
+# 12. Cleanup
 cd ..
 delete folder test_project
 ```
@@ -528,6 +597,35 @@ echo -e "\033[38;5;165mTest\033[0m"
 # Should show colored text
 ```
 
+### **Issue: Gemini model not found**
+
+```bash
+# Solution: Use correct model name
+:set-ai gemini-1.5-pro  # ✅ Correct
+:set-ai gemini-pro      # ❌ Not available in v1beta API
+```
+
+### **Issue: Editor panel shows "Render error"**
+
+```bash
+# Solution: This was fixed in v1.1.0. Update to latest version:
+pip install --upgrade -e .
+```
+
+### **Issue: Panels stacking/not clearing**
+
+```bash
+# Solution: This was fixed in v1.1.0. Update to latest version:
+pip install --upgrade -e .
+```
+
+### **Issue: Error messages in conversation history**
+
+```bash
+# Solution: This was fixed in v1.1.0. Update to latest version:
+pip install --upgrade -e .
+```
+
 ---
 
 ## ✅ **Success Criteria**
@@ -540,14 +638,145 @@ Your program is working correctly if:
 - ✅ No "Path is not a file" errors for folders
 - ✅ Editor streaming works smoothly
 - ✅ All panels render correctly
-- ✅ Colors are consistent
+- ✅ Colors are consistent (neon purple theme)
 - ✅ File system watcher syncs changes
 - ✅ Documentation auto-updates
 - ✅ No crashes on errors
+- ✅ All shell commands work
+- ✅ All AI models support streaming
+- ✅ Error messages properly filtered
+- ✅ No duplicate outputs
+
+---
+
+## 🧪 **Advanced Testing**
+
+### **Test All Models**
+
+```bash
+# Test OpenAI
+:set-ai gpt-4o-mini
+explain the file app.py
+
+# Test Gemini
+:set-ai gemini-1.5-pro
+explain the file app.py
+
+# Test Claude
+:set-ai claude-3-5-sonnet
+explain the file app.py
+
+# Test Ollama (if installed)
+:set-ai llama2
+explain the file app.py
+```
+
+### **Test Streaming**
+
+```bash
+# Test streaming for each model
+:live-edit app.py
+add a function that calculates fibonacci
+# Watch token-by-token streaming
+```
+
+### **Test Error Handling**
+
+```bash
+# Test with invalid API key
+export OPENAI_API_KEY="invalid"
+:set-ai gpt-4o-mini
+explain the file app.py
+# Should show helpful error message
+
+# Test with missing file
+delete file nonexistent.txt
+# Should show error, not crash
+```
+
+### **Test Edge Cases**
+
+```bash
+# Test empty file
+create file empty.txt with
+
+# Test very long file
+:ml
+create a file called long.py with
+# (paste 1000+ lines)
+:end
+
+# Test special characters
+create file test.txt with Hello "World" & 'Test'
+```
+
+---
+
+## 📊 **Test Results Template**
+
+Use this template to track your testing:
+
+```markdown
+## Test Results
+
+### Basic Functionality
+- [ ] UI renders correctly
+- [ ] Panels switch smoothly
+- [ ] Colors display properly
+
+### File Operations
+- [ ] Create file works
+- [ ] Read file works
+- [ ] Delete file works
+- [ ] Rename file works
+- [ ] Move file works
+- [ ] Copy file works
+
+### Line Editing
+- [ ] Remove line works
+- [ ] Add line works
+- [ ] Edit line works
+- [ ] Delete range works
+- [ ] Append works
+
+### Git Operations
+- [ ] Init works
+- [ ] Add works
+- [ ] Commit works
+- [ ] Branch works
+- [ ] Checkout works
+- [ ] Merge works
+- [ ] Push works
+- [ ] Pull works
+- [ ] Graph displays
+
+### AI Features
+- [ ] Model switching works
+- [ ] Streaming works
+- [ ] Tool calling works
+- [ ] Error handling works
+
+### Shell Commands
+- [ ] ls works
+- [ ] cd works
+- [ ] grep works
+- [ ] find works
+- [ ] python works
+- [ ] All other commands work
+```
 
 ---
 
 ## 🎉 **You're Ready!**
 
-Once all tests pass, your GitVisionCLI is **PUBLISH READY**! 🚀
+Once all tests pass, your GitVisionCLI is **PRODUCTION READY**! 🚀
 
+**Next Steps:**
+- Read [COMMANDS.md](docs/COMMANDS.md) for complete command reference
+- Read [FEATURES.md](docs/FEATURES.md) for detailed features
+- Read [QUICKSTART.md](docs/QUICKSTART.md) for quick start guide
+
+---
+
+**Version**: 1.1.0  
+**Last Updated**: 2024-12-XX

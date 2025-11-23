@@ -2,6 +2,13 @@
 
 **We welcome contributions!** Thank you for helping make GitVisionCLI better.
 
+<div align="center">
+
+[![Contributing](https://img.shields.io/badge/Contributions-Welcome-green.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+
+</div>
+
 ---
 
 ## 📋 **Table of Contents**
@@ -11,6 +18,9 @@
 - [Development Setup](#-development-setup)
 - [Pull Request Process](#-pull-request-process)
 - [Coding Standards](#-coding-standards)
+- [Testing Guidelines](#-testing-guidelines)
+- [Documentation Updates](#-documentation-updates)
+- [Areas for Contribution](#-areas-for-contribution)
 
 ---
 
@@ -29,19 +39,65 @@ This project follows the [Contributor Covenant](https://www.contributor-covenant
 Before creating bug reports, please check existing issues. When creating a bug report, include:
 
 - **Clear title** and description
-- **Steps to reproduce**
+- **Steps to reproduce** (detailed)
 - **Expected vs. actual behavior**
 - **Environment** (OS, Python version, terminal)
 - **Screenshots** if applicable
+- **Error messages** (full traceback if available)
+
+**Bug Report Template:**
+```markdown
+## Bug Description
+Brief description of the bug
+
+## Steps to Reproduce
+1. Launch GitVision
+2. Execute command X
+3. See error
+
+## Expected Behavior
+What should happen
+
+## Actual Behavior
+What actually happens
+
+## Environment
+- OS: macOS/Windows/Linux
+- Python: 3.9+
+- Terminal: iTerm2/Alacritty/etc.
+- GitVisionCLI version: 1.1.0
+
+## Screenshots
+If applicable
+```
 
 ### **✨ Suggesting Features**
 
 Feature suggestions are welcome! Please:
 
 - **Check existing issues** first
-- **Explain the use case**
+- **Explain the use case** clearly
 - **Describe the proposed solution**
 - **Consider alternatives**
+- **Show examples** if possible
+
+**Feature Request Template:**
+```markdown
+## Feature Description
+Brief description of the feature
+
+## Use Case
+Why is this feature needed?
+
+## Proposed Solution
+How should it work?
+
+## Alternatives Considered
+Other approaches you've thought about
+
+## Examples
+Code examples or mockups
+```
 
 ### **🔧 Pull Requests**
 
@@ -49,6 +105,8 @@ Feature suggestions are welcome! Please:
 - Add features
 - Improve documentation
 - Enhance tests
+- Optimize performance
+- Improve UI/UX
 
 ---
 
@@ -61,6 +119,9 @@ Feature suggestions are welcome! Please:
 # Then clone your fork
 git clone https://github.com/YOUR_USERNAME/GitVisionCLI.git
 cd GitVisionCLI
+
+# Add upstream remote
+git remote add upstream https://github.com/NikanEidi/GitVisionCLI.git
 ```
 
 ### **2. Create Virtual Environment**
@@ -76,13 +137,37 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
+This installs:
+- All production dependencies
+- Development dependencies (pytest, black, mypy, etc.)
+
 ### **4. Install Pre-commit Hooks**
 
 ```bash
 pre-commit install
 ```
 
-### **5. Run Tests**
+### **5. Set Up API Keys**
+
+```bash
+# At least one AI provider
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GOOGLE_API_KEY="..."
+
+# Optional: GitHub
+export GITHUB_TOKEN="ghp_..."
+```
+
+### **6. Verify Installation**
+
+```bash
+gitvision doctor
+```
+
+Should show all systems operational.
+
+### **7. Run Tests**
 
 ```bash
 pytest tests/
@@ -106,6 +191,7 @@ git checkout -b fix/bug-description
 - `docs/` - Documentation
 - `refactor/` - Code refactoring
 - `test/` - Test improvements
+- `style/` - Code style changes
 
 ### **2. Make Changes**
 
@@ -113,6 +199,7 @@ git checkout -b fix/bug-description
 - Add tests for new features
 - Update documentation
 - Follow coding standards
+- Test your changes thoroughly
 
 ### **3. Test Your Changes**
 
@@ -126,6 +213,10 @@ mypy gitvisioncli/
 # Run linter
 black gitvisioncli/
 flake8 gitvisioncli/
+
+# Test manually
+gitvision
+# Test your changes
 ```
 
 ### **4. Commit**
@@ -159,6 +250,8 @@ git commit -m "feat: add amazing feature"
 feat: add multiline input support
 fix: resolve duplicate panel rendering
 docs: update command reference
+refactor: improve error handling
+test: add tests for line editing
 ```
 
 ### **5. Push & Create PR**
@@ -174,6 +267,31 @@ Then create a Pull Request on GitHub with:
 - **Related issues** (if any)
 - **Screenshots** (if UI changes)
 - **Test results**
+- **Checklist** of what was tested
+
+**PR Template:**
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Documentation update
+- [ ] Refactoring
+- [ ] Performance improvement
+
+## Testing
+- [ ] Tests pass
+- [ ] Manual testing completed
+- [ ] All features work as expected
+
+## Screenshots
+If applicable
+
+## Related Issues
+Closes #123
+```
 
 ---
 
@@ -217,13 +335,18 @@ gitvisioncli/
 ├── core/              # Core logic
 │   ├── chat_engine.py
 │   ├── editing_engine.py
-│   └── supervisor.py
+│   ├── supervisor.py
+│   └── natural_language_action_engine.py
 ├── ui/                # UI components
-│   └── dual_panel.py
+│   ├── dual_panel.py
+│   ├── chat_box.py
+│   └── colors.py
 ├── workspace/         # Workspace panels
 │   ├── banner_panel.py
-│   └── tree_panel.py
-└── providers/         # AI providers
+│   ├── tree_panel.py
+│   ├── editor_panel.py
+│   └── sheet_panel.py
+└── providers/         # AI providers (if needed)
     ├── openai_provider.py
     └── claude_provider.py
 ```
@@ -271,6 +394,9 @@ pytest tests/test_editing_engine.py
 
 # Verbose
 pytest -v
+
+# With output
+pytest -s
 ```
 
 ### **Write Tests**
@@ -279,6 +405,22 @@ pytest -v
 - Test edge cases
 - Test error conditions
 - Mock external dependencies
+- Test UI components (if applicable)
+
+**Test Structure:**
+```python
+def test_feature_name():
+    """Test description."""
+    # Arrange
+    engine = EditingEngine()
+    content = "test content"
+    
+    # Act
+    result = engine.some_method(content)
+    
+    # Assert
+    assert result == expected
+```
 
 ---
 
@@ -289,7 +431,16 @@ When adding features, update:
 - `README.md` - If it's a major feature
 - `docs/COMMANDS.md` - For new commands
 - `docs/FEATURES.md` - For feature details
+- `docs/QUICKSTART.md` - If it affects getting started
 - `CHANGELOG.md` - Always!
+- `RUN_AND_TEST.md` - If it affects testing
+
+**Documentation Standards:**
+- Clear, concise descriptions
+- Code examples for all commands
+- Expected results
+- Troubleshooting tips
+- Cross-references to related docs
 
 ---
 
@@ -302,6 +453,8 @@ When adding features, update:
 - Syntax highlighting in editor
 - Improved error messages
 - Performance optimizations
+- Better test coverage
+- Enhanced UI/UX
 
 ### **Good First Issues**
 
@@ -309,14 +462,41 @@ When adding features, update:
 - Test coverage
 - UI polish
 - Bug fixes
+- Code cleanup
+- Example additions
+
+### **Advanced**
+
+- Plugin system
+- Collaborative editing
+- Custom AI prompts
+- Advanced search
+- Code snippets
+- Performance profiling
+
+---
+
+## 🔍 **Code Review Process**
+
+1. **Automated Checks**: CI runs tests, linting, type checking
+2. **Manual Review**: Maintainers review code
+3. **Feedback**: Address any requested changes
+4. **Approval**: Once approved, PR is merged
+
+**Review Criteria:**
+- Code quality and style
+- Test coverage
+- Documentation updates
+- Backward compatibility
+- Performance impact
 
 ---
 
 ## ❓ **Questions?**
 
 - **Discussions:** Use GitHub Discussions
-- **Chat:** Join our community (if applicable)
-- **Email:** Contact maintainers
+- **Issues:** Create an issue for bugs/features
+- **Email:** Contact maintainers (if applicable)
 
 ---
 
@@ -324,10 +504,24 @@ When adding features, update:
 
 Contributors will be:
 
-- Listed in `CONTRIBUTORS.md`
+- Listed in `CONTRIBUTORS.md` (if applicable)
 - Mentioned in release notes
 - Forever appreciated! 🙏
 
 ---
 
+## 📖 **Resources**
+
+- [Python Style Guide (PEP 8)](https://pep8.org/)
+- [Black Code Formatter](https://black.readthedocs.io/)
+- [pytest Documentation](https://docs.pytest.org/)
+- [Type Hints (PEP 484)](https://www.python.org/dev/peps/pep-0484/)
+
+---
+
 **Thank you for contributing to GitVisionCLI!** ❤️
+
+---
+
+**Version**: 1.1.0  
+**Last Updated**: 2024-12-XX

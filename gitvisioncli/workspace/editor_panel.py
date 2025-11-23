@@ -792,7 +792,10 @@ class EditorPanel:
         """
         if not hasattr(self, '_stream_buffer'):
             self._stream_buffer = ""
-            self._stream_start_line = len(self.content) + 1 if self.content else 1
+            # If _stream_start_line was explicitly set (e.g., to 1 for full file replacement),
+            # preserve it. Otherwise, default to appending after existing content.
+            if not hasattr(self, '_stream_start_line'):
+                self._stream_start_line = len(self.content) + 1 if self.content else 1
         
         # Accumulate text
         self._stream_buffer += text

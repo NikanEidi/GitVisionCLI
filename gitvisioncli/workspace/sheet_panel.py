@@ -15,7 +15,6 @@ from gitvisioncli.ui.colors import (
     MID_GRAY,
     DARK_GRAY,
 )
-from gitvisioncli.core.supervisor import ActionType
 
 
 class CommandSheetPanel:
@@ -56,7 +55,7 @@ class CommandSheetPanel:
 
         # Ultra-vibrant title with gradient effect
         title = f"{BOLD}{ELECTRIC_CYAN}╔═══{RESET}{BOLD}{NEON_PURPLE} GITVISION COMMANDS {RESET}{BOLD}{ELECTRIC_CYAN}═══╗{RESET}"
-            lines.append(title)
+        lines.append(title)
         # Add decorative underline
         underline = f"{BOLD}{BRIGHT_MAGENTA}{'═' * (len(self._strip_ansi(title)) - 2)}{RESET}"
         lines.append(underline)

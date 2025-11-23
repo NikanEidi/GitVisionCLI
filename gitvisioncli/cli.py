@@ -434,6 +434,7 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
     right_panel: Optional[RightPanel] = None
     fs_watcher: Optional[FileSystemWatcher] = None
     renderer: Optional[DualPanelRenderer] = None
+    live_edit_file: Optional[str] = None  # Track live edit mode
 
     if enable_workspace:
         right_panel, fs_watcher = _init_workspace(engine, engine.get_base_dir())
@@ -717,7 +718,17 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
             if enable_workspace and right_panel and (not is_multiline) and user_input.startswith(":"):
                 ok, msg = right_panel.handle_command(user_input)
                 if ok:
-                    conversation.add_system(msg)
+                    # Check for LIVE_EDIT_READY marker
+                    if msg.startswith("LIVE_EDIT_READY:"):
+                        live_edit_file = msg.split(":", 1)[1]
+                        conversation.add_system(f"⚡ Live edit mode activated for {live_edit_file}")
+                        conversation.add_system("Type your edit instructions. AI will stream code directly into the editor.")
+                    else:
+                        conversation.add_system(msg)
+                        # Exit live edit mode if user closes editor, switches panels, or switches files
+                        # Note: ":close" command returns "Right panel closed. Banner restored."
+                        if msg in ("File saved.", "Right panel closed. Banner restored.") or user_input.strip().lower() == ":close" or user_input.startswith(":edit "):
+                            live_edit_file = None
                     engine.update_workspace_context(right_panel.get_workspace_context())
                 else:
                     conversation.add_error(msg)
@@ -820,23 +831,208 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                     continue
 
             # --- 9. SEND TO AI (DEFAULT PATH) ---
+            # Check if we're in live edit mode
+            if live_edit_file and enable_workspace and right_panel:
+                # Live edit mode: stream directly to editor
+                # CRITICAL FIX: Compare paths properly - live_edit_file is a relative filename,
+                # but file_path is an absolute Path. Compare by resolving both to absolute paths.
+                editor_file_path = right_panel.editor_panel.file_path
+                if editor_file_path:
+                    # Resolve live_edit_file to absolute path using base_dir
+                    live_edit_abs = (right_panel.base_dir / live_edit_file).resolve()
+                    editor_abs = editor_file_path.resolve()
+                    # Compare absolute paths
+                    file_matches = (editor_abs == live_edit_abs)
+                else:
+                    file_matches = False
+                
+                if file_matches:
+                    conversation.add_user(user_input)
+                    processing_msg = f"{BOLD}{BRIGHT_MAGENTA}⚡ Live editing {live_edit_file}...{RESET}"
+                    _render_ui(renderer, conversation, engine, processing_msg)
+                    
+                    # Build live edit prompt - tell AI to output ONLY code, no explanations
+                    file_content = right_panel.editor_panel.get_text()
+                    # Detect file type from extension
+                    file_language = right_panel.editor_panel.get_language() or "code"
+                    file_ext = editor_file_path.suffix.lower() if editor_file_path else ""
+                    file_type_desc = file_language if file_language != "code" else f"{file_ext[1:] if file_ext else 'text'} file"
+                    
+                    live_edit_prompt = f"""You are editing a {file_type_desc} in live mode. The user wants you to modify the file based on their instruction.
+
+Current file content:
+```
+{file_content}
+```
+
+User instruction: {user_input}
+
+CRITICAL INSTRUCTIONS:
+1. Output ONLY the complete {file_type_desc} content that should be in the file
+2. Do NOT include markdown code blocks (no ```{file_language} or ```)
+3. Do NOT include explanations, comments, or any text before/after the code
+4. If the instruction is to add/modify specific parts, output the COMPLETE modified file
+5. Start directly with the {file_type_desc} content, no preamble
+
+Output the raw {file_type_desc} content now:"""
+
+                    # Set editor panel for streaming
+                    engine.set_editor_panel(right_panel.editor_panel)
+                    
+                    # Delete stream attributes to allow proper re-initialization from scratch
+                    # Then set _stream_start_line to 1 to replace entire file from the beginning
+                    if hasattr(right_panel.editor_panel, '_stream_buffer'):
+                        delattr(right_panel.editor_panel, '_stream_buffer')
+                    if hasattr(right_panel.editor_panel, '_stream_start_line'):
+                        delattr(right_panel.editor_panel, '_stream_start_line')
+                    # Set start line to 1 for full file replacement
+                    right_panel.editor_panel._stream_start_line = 1
+                    
+                    chunks = []
+                    response_text = ""
+                    try:
+                        # Stream AI response character-by-character to editor
+                        async for ch in engine.stream(live_edit_prompt):
+                            chunks.append(ch)
+                            # Stream character-by-character to editor in real-time
+                            if right_panel.editor_panel and hasattr(right_panel.editor_panel, 'write_stream'):
+                                right_panel.editor_panel.write_stream(ch)
+                            # Render UI frequently for smooth streaming effect (every few chars)
+                            if len(chunks) % 10 == 0:  # Render every 10 chars for performance
+                                _render_ui(renderer, conversation, engine)
+                        
+                        # Finish streaming
+                        if right_panel.editor_panel and hasattr(right_panel.editor_panel, 'finish_stream'):
+                            right_panel.editor_panel.finish_stream()
+                        
+                        response_text = "".join(chunks)
+                        
+                        # Clean up response text (remove markdown code blocks and explanations if present)
+                        cleaned_text = response_text.strip()
+                        
+                        # Remove markdown code blocks
+                        import re
+                        if "```" in cleaned_text:
+                            # Extract code from markdown blocks (take the largest block)
+                            code_blocks = re.findall(r'```(?:\w+)?\n?(.*?)```', cleaned_text, re.DOTALL)
+                            if code_blocks:
+                                # Use the largest code block (most likely the actual code)
+                                cleaned_text = max(code_blocks, key=len).strip()
+                        
+                        # Remove common explanation prefixes and suffixes
+                        explanation_patterns = [
+                            r'^Here[^\n]*:\s*',
+                            r'^The code[^\n]*:\s*',
+                            r'^Here is[^\n]*:\s*',
+                            r'^I[^\n]*:\s*',
+                            r'^This[^\n]*:\s*',
+                            r'\n\n[^\n]*explanation[^\n]*$',
+                            r'\n\n[^\n]*note[^\n]*$',
+                        ]
+                        for pattern in explanation_patterns:
+                            cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE | re.MULTILINE)
+                        
+                        cleaned_text = cleaned_text.strip()
+                        
+                        # If we got cleaned code and it's different from original, update editor
+                        # This is a fallback in case streaming didn't work perfectly
+                        if cleaned_text and cleaned_text != file_content and len(cleaned_text) > 10:
+                            # Check if streaming already updated the editor
+                            current_content = right_panel.editor_panel.get_text()
+                            if current_content == file_content:
+                                # Streaming didn't work, update manually
+                                right_panel.editor_panel.set_text(cleaned_text)
+                                conversation.add_ai(f"✓ Live edit applied to {live_edit_file}")
+                            else:
+                                # Streaming worked, just confirm
+                                conversation.add_ai(f"✓ Code streamed to {live_edit_file}")
+                        elif response_text:
+                            # If we have response but couldn't clean it, show what we got
+                            conversation.add_ai(f"✓ Code streamed to {live_edit_file}")
+                        else:
+                            conversation.add_ai(f"⚠️  No code generated. Try a more specific instruction.")
+                            
+                    except Exception as e:
+                        logger.error(f"Live edit failed: {e}", exc_info=True)
+                        conversation.add_error(f"Live edit failed: {e}")
+                        if right_panel.editor_panel and hasattr(right_panel.editor_panel, 'finish_stream'):
+                            try:
+                                right_panel.editor_panel.finish_stream()
+                            except:
+                                pass
+                    
+                    _render_ui(renderer, conversation, engine)
+                    continue
+                else:
+                    # File not open, exit live edit mode
+                    live_edit_file = None
+                    conversation.add_system("Live edit mode cancelled (file not open)")
+
+            # Normal AI chat mode
             conversation.add_user(user_input)
+
+            # Check if we should enable typewriter effect for :edit mode
+            # Detect if editor has a file open and user's request suggests editing
+            enable_typewriter = False
+            editor_file_path = None
+            if enable_workspace and right_panel and right_panel.editor_panel.file_path:
+                editor_file_path = right_panel.editor_panel.file_path
+                # Check if user input suggests file editing
+                edit_keywords = [
+                    "edit", "modify", "change", "update", "add", "remove", "delete",
+                    "rewrite", "refactor", "fix", "improve", "enhance", "replace",
+                    "insert", "append", "prepend", "create", "write", "generate"
+                ]
+                user_lower = user_input.lower()
+                # Check if input contains edit keywords or references the open file
+                if any(keyword in user_lower for keyword in edit_keywords):
+                    enable_typewriter = True
+                # Also check if file name is mentioned
+                if editor_file_path and editor_file_path.name.lower() in user_lower:
+                    enable_typewriter = True
 
             # Show "Processing..." overlay while AI is working
             processing_msg = f"{BOLD}{BRIGHT_MAGENTA}⚡ Processing...{RESET}"
+            if enable_typewriter and editor_file_path:
+                processing_msg = f"{BOLD}{BRIGHT_MAGENTA}⚡ Editing {editor_file_path.name}...{RESET}"
             _render_ui(renderer, conversation, engine, processing_msg)
 
             if enable_workspace and right_panel:
                 engine.update_workspace_context(right_panel.get_workspace_context())
                 # Update editor panel reference for streaming
                 engine.set_editor_panel(right_panel.editor_panel)
+                
+                # Set up typewriter streaming if enabled
+                if enable_typewriter and right_panel.editor_panel.file_path:
+                    # Delete stream attributes to allow proper re-initialization
+                    if hasattr(right_panel.editor_panel, '_stream_buffer'):
+                        delattr(right_panel.editor_panel, '_stream_buffer')
+                    if hasattr(right_panel.editor_panel, '_stream_start_line'):
+                        delattr(right_panel.editor_panel, '_stream_start_line')
+                    # For typewriter mode, append after existing content (don't replace)
+                    # This allows incremental edits rather than full file replacement
+                    # The start line will be set by write_stream() to append mode
 
             chunks = []
             response_text = ""
             try:
-                async for ch in engine.stream(user_input):
-                    # We buffer chunks; rendering of final answer is done after
-                    chunks.append(ch)
+                if enable_typewriter:
+                    # Typewriter mode: stream with frequent UI updates for smooth effect
+                    # The chat engine already handles streaming to editor panel via write_stream()
+                    # We just need to render UI frequently for visual feedback
+                    char_count = 0
+                    async for ch in engine.stream(user_input):
+                        chunks.append(ch)
+                        char_count += len(ch) if ch else 0
+                        # Render UI frequently for smooth streaming effect (every few chars)
+                        if char_count % 10 == 0:  # Render every 10 chars for performance
+                            _render_ui(renderer, conversation, engine)
+                    # Final render to show complete result
+                    _render_ui(renderer, conversation, engine)
+                else:
+                    # Normal mode: buffer chunks
+                    async for ch in engine.stream(user_input):
+                        chunks.append(ch)
 
                 response_text = "".join(chunks)
                 if response_text:

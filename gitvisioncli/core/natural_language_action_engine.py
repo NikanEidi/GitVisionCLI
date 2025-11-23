@@ -131,8 +131,10 @@ class NaturalLanguageActionEngine:
         
         # Git operations - comprehensive natural language support
         # Git init - support "initialize git", "init git", "git init", "set up git"
+        # CRITICAL FIX: Exclude "create git repo" when followed by project name or privacy setting
+        # to prevent false positives with GitHub repo creation commands
         self._git_init_re = re.compile(
-            r"\b(?:git\s+init|initialize\s+git|init\s+git|set\s+up\s+git|start\s+git\s+repository|create\s+git\s+repo)\b", 
+            r"\b(?:git\s+init|initialize\s+git|init\s+git|set\s+up\s+git|start\s+git\s+repository|create\s+git\s+repo(?!\s+[^\s]+\s+(?:private|public)))\b", 
             re.IGNORECASE
         )
         # CRITICAL FIX: Require explicit "git" prefix for status/log to avoid false positives
@@ -140,8 +142,10 @@ class NaturalLanguageActionEngine:
         self._git_status_re = re.compile(r"\bgit\s+status\b", re.IGNORECASE)
         self._git_log_re = re.compile(r"\bgit\s+log\b", re.IGNORECASE)
         # Git add - support "add files", "stage files", "add all", "stage all", "add everything"
+        # CRITICAL FIX: Put [^\s]+ before keyword patterns to prevent files like "all_files.txt"
+        # from matching just "all" instead of the full filename
         self._git_add_re = re.compile(
-            r"\b(?:git\s+)?(?:add|stage)\s+(?P<path>\.|all|everything|files?|changes?|[^\s]+)\b", 
+            r"\b(?:git\s+)?(?:add|stage)\s+(?P<path>[^\s]+|\.|all|everything|files?|changes?)\b", 
             re.IGNORECASE
         )
         # Git commit - support "commit changes", "commit with message", "save changes", "commit all"
@@ -173,8 +177,13 @@ class NaturalLanguageActionEngine:
             re.IGNORECASE
         )
         # Git pull - support "pull changes", "sync from github", "get latest"
+        # CRITICAL FIX: "get latest" requires explicit Git context to avoid false positives
+        # from common English phrases like "get latest posts" or "get latest data"
+        # "get latest" must have either: "git" prefix OR "from github/origin/remote" after it
+        # Note: Python regex doesn't allow same named group in alternatives, so we use branch and branch2
+        # and handle both in the code
         self._git_pull_re = re.compile(
-            r"\b(?:git\s+)?(?:pull|sync|get\s+latest)\s+(?:from\s+(?:github|origin|remote))?\s*(?:origin\s+)?(?P<branch>[^\s]*)\b", 
+            r"\b(?:git\s+)?(?:pull|sync)\s*(?:from\s+(?:github|origin|remote))?\s*(?:origin\s+)?(?P<branch>[^\s]*)\b|\b(?:git\s+get\s+latest|get\s+latest\s+from\s+(?:github|origin|remote))\s*(?:origin\s+)?(?P<branch2>[^\s]*)\b", 
             re.IGNORECASE
         )
         self._git_remote_re = re.compile(
@@ -191,13 +200,25 @@ class NaturalLanguageActionEngine:
         # GitHub operations - comprehensive natural language support
         # Support: "create private repository call it demo", "create github repo named demo private", 
         # "make a private repo called demo", "create repo demo private"
+        # CRITICAL FIX: Also support "create git repo <name> <private>" to distinguish from local git init
         self._github_repo_re = re.compile(
-            r"\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\s+(?P<private>private|public)?\b", 
+            r"\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+|git\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\s+(?P<private>private|public)\b", 
             re.IGNORECASE
         )
         # Also support: "create private repository demo", "create demo repository private"
         self._github_repo_alt_re = re.compile(
-            r"\b(?:create|make)\s+(?:a\s+)?(?P<private>private|public)\s+(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b", 
+            r"\b(?:create|make)\s+(?:a\s+)?(?P<private>private|public)\s+(?:github\s+|git\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b", 
+            re.IGNORECASE
+        )
+        # Support: "create github repo <name>" (without privacy setting, defaults to public)
+        self._github_repo_simple_re = re.compile(
+            r"\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+)(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
+            re.IGNORECASE
+        )
+        # CRITICAL FIX: Support "create git repo <name>" (without privacy) as GitHub repo
+        # This distinguishes from "create git repo" (no name) which is local git init
+        self._github_repo_git_name_re = re.compile(
+            r"\bcreate\s+git\s+repo\s+(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
             re.IGNORECASE
         )
         self._github_issue_re = re.compile(
@@ -588,7 +609,13 @@ class NaturalLanguageActionEngine:
         # ============================================================
         
         # Git init
-        if self._git_init_re.search(text):
+        # CRITICAL FIX: Check for GitHub repo creation first to prevent false positives
+        # "create git repo my-project private" should be GitHub, not git init
+        github_repo_check = (self._github_repo_re.search(text) or 
+                             self._github_repo_alt_re.search(text) or 
+                             self._github_repo_simple_re.search(text) or
+                             self._github_repo_git_name_re.search(text))
+        if not github_repo_check and self._git_init_re.search(text):
             return ActionJSON(type="GitInit", params={})
         
         # Git status (routed to RunGitCommand for display)
@@ -669,7 +696,11 @@ class NaturalLanguageActionEngine:
         # Git pull
         match = self._git_pull_re.search(text)
         if match:
-            branch = match.group("branch")
+            # CRITICAL FIX: Handle both capture group names (branch and branch2)
+            # since Python regex doesn't allow same named group in alternatives
+            branch = match.group("branch") if "branch" in match.groupdict() and match.group("branch") else None
+            branch2 = match.group("branch2") if "branch2" in match.groupdict() and match.group("branch2") else None
+            branch = branch or branch2 or ""
             params = {}
             if branch:
                 params["branch"] = branch
@@ -768,18 +799,23 @@ class NaturalLanguageActionEngine:
                 return ActionJSON(
                     type="RunShellCommand",
                     params={"command": path}
-                )
+            )
         
         # ============================================================
         # GITHUB OPERATIONS
         # ============================================================
         
-        # Create GitHub repo - try both patterns
-        match = self._github_repo_re.search(text) or self._github_repo_alt_re.search(text)
+        # Create GitHub repo - try all patterns
+        # CRITICAL FIX: Check GitHub patterns first to prevent false positives with git init
+        match = (self._github_repo_re.search(text) or 
+                 self._github_repo_alt_re.search(text) or 
+                 self._github_repo_simple_re.search(text) or
+                 self._github_repo_git_name_re.search(text))
         if match:
             name = match.group("name")
-            private_str = match.group("private")
-            is_private = private_str and private_str.lower() == "private"
+            # Privacy setting may not be present in simple/git_name patterns
+            private_str = match.group("private") if "private" in match.groupdict() else None
+            is_private = private_str and private_str.lower() == "private" if private_str else False
             return ActionJSON(
                 type="GitHubCreateRepo",
                 params={

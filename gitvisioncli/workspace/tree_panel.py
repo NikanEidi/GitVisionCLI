@@ -5,7 +5,18 @@ Tree Panel — Recursive project directory tree viewer
 import logging
 from pathlib import Path
 from typing import List, Optional, Set
-from gitvisioncli.ui.colors import *
+from gitvisioncli.ui.colors import (
+    BOLD,
+    RESET,
+    DIM,
+    MID_GRAY,
+    WHITE,
+    NEON_PURPLE,
+    BRIGHT_MAGENTA,
+    ELECTRIC_CYAN,
+    GLITCH_GREEN,
+    DEEP_CYAN,
+)
 import re
 
 logger = logging.getLogger(__name__)
@@ -48,6 +59,11 @@ class TreePanel:
         """Update tree root on cd."""
         self.base_dir = new_base_dir.resolve()
         logger.debug(f"TreePanel base_dir updated to {self.base_dir}")
+
+    def _strip_ansi(self, text: str) -> str:
+        """Remove ANSI escape sequences from text."""
+        ansi_pattern = re.compile(r"\x1b\[[0-9;]*m")
+        return ansi_pattern.sub("", text)
 
     def _should_ignore(self, path: Path) -> bool:
         if path.suffix in self.ignore_exts:
