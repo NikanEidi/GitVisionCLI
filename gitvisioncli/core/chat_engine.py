@@ -884,8 +884,9 @@ simple natural language commands may already be handled by the direct engine."""
                 path = Path(self.context.active_file_path)
                 if not path.is_absolute():
                     path = (base / path).resolve()
-                content = None
-                if path.exists():
+                # Use content from context if available, otherwise read from disk
+                content = self.context.active_file_content
+                if content is None and path.exists():
                     content = path.read_text(encoding="utf-8", errors="ignore")
                 active_file_ctx = ActiveFileContext(
                     path=str(path),
@@ -1244,22 +1245,6 @@ simple natural language commands may already be handled by the direct engine."""
             yield msg
             return
 
-        # Stream reply_text to editor if available (for live typing effect)
-        if reply_text and editor_panel and hasattr(editor_panel, 'write_stream'):
-            try:
-                # Stream character by character for live typing effect
-                for char in reply_text:
-                    editor_panel.write_stream(char)
-                    yield char
-                editor_panel.finish_stream()
-            except Exception as e:
-                logger.debug(f"Editor streaming failed: {e}")
-                # Fall back to normal yield
-                yield reply_text
-        elif reply_text:
-            # Normal yield if no editor or streaming not available
-            yield reply_text
-
         if not reply_text:
             # Provide a more actionable message for "empty" completions
             # from non-OpenAI providers, which often indicate that the
@@ -1276,7 +1261,22 @@ simple natural language commands may already be handled by the direct engine."""
 
         # Record the assistant reply in context first.
         self.context.add_message("assistant", reply_text)
-        yield reply_text
+        
+        # Stream reply_text to editor if available (for live typing effect)
+        if reply_text and editor_panel and hasattr(editor_panel, 'write_stream'):
+            try:
+                # Stream character by character for live typing effect
+                for char in reply_text:
+                    editor_panel.write_stream(char)
+                    yield char
+                editor_panel.finish_stream()
+            except Exception as e:
+                logger.debug(f"Editor streaming failed: {e}")
+                # Fall back to normal yield
+                yield reply_text
+        else:
+            # Normal yield if no editor or streaming not available
+            yield reply_text
 
         # For non-OpenAI providers (Gemini, Claude, Ollama, etc.) that do
         # NOT have an OpenAI client configured, attempt a local

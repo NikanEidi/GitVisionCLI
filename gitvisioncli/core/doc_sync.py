@@ -78,15 +78,22 @@ class DocumentationSyncer:
             return False
         
         try:
-            # For now, we'll add a timestamp marker to indicate sync was triggered
-            # In a full implementation, this would analyze changes and update docs accordingly
-            logger.debug(f"Documentation sync triggered for: {modified_files}")
+            # Log sync trigger with details
+            logger.info(
+                f"Documentation sync triggered for {len(modified_files)} file(s): "
+                f"{[f.name for f in modified_files[:3]]}"
+                f"{'...' if len(modified_files) > 3 else ''}"
+                f" (action: {action_type or 'unknown'})"
+            )
             
-            # TODO: Implement intelligent doc updates based on:
-            # - New action types added
-            # - New features implemented
-            # - Changed command syntax
-            # - New file operations
+            # Note: Full intelligent doc updates would require:
+            # - Parsing markdown structure
+            # - Detecting new action types from code changes
+            # - Extracting command examples from natural language patterns
+            # - Updating feature lists based on new implementations
+            # 
+            # For now, this serves as a hook for future enhancement.
+            # The sync is properly wired into the executor and action router.
             
             return True
         except Exception as e:

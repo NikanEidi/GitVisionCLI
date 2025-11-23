@@ -66,6 +66,12 @@ class NaturalLanguageActionEngine:
         self._insert_at_line_re = re.compile(
             r"\b(insert|add|write)\s+(?:at|on)\s+line\s*(?P<line>\d+)\s*:?\s*(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
         )
+        self._add_line_re = re.compile(
+            r"\b(add|insert)\s+line\s*(?P<line>\d+)\s+with\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+        )
+        self._edit_line_re = re.compile(
+            r"\b(edit|change|update)\s+line\s*(?P<line>\d+)\s+with\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+        )
         self._append_re = re.compile(
             r"\b(add|append|insert)\s+(?:comment|text|code|line)?\s*(?:at|to)?\s*(?:the\s+)?(?:bottom|end)\b", re.IGNORECASE
         )
@@ -134,6 +140,15 @@ class NaturalLanguageActionEngine:
         )
         self._git_merge_re = re.compile(
             r"\b(?:git\s+)?merge\s+(?:branch\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
+        )
+        self._git_push_re = re.compile(
+            r"\b(?:git\s+)?push\s+(?:-u\s+)?(?:origin\s+)?(?P<branch>[^\s]*)\b", re.IGNORECASE
+        )
+        self._git_pull_re = re.compile(
+            r"\b(?:git\s+)?pull\s+(?:origin\s+)?(?P<branch>[^\s]*)\b", re.IGNORECASE
+        )
+        self._git_remote_re = re.compile(
+            r"\b(?:git\s+)?remote\s+add\s+(?P<name>[^\s]+)\s+(?P<url>[^\s]+)\b", re.IGNORECASE
         )
         self._git_graph_re = re.compile(
             r"\b(?:git\s+)?(?:show\s+)?(?:graph|log\s+--graph)\b", re.IGNORECASE
@@ -294,8 +309,8 @@ class NaturalLanguageActionEngine:
                     }
                 )
             
-            # Insert at line
-            match = self._insert_at_line_re.search(text)
+            # Insert at line (handle both "insert at line N" and "add line N with X")
+            match = self._insert_at_line_re.search(text) or self._add_line_re.search(text)
             if match:
                 line_num = int(match.group("line"))
                 content = match.group("text").strip().strip('"\'')
@@ -532,6 +547,43 @@ class NaturalLanguageActionEngine:
             return ActionJSON(
                 type="GitMerge",
                 params={"branch": branch}
+            )
+        
+        # Git push
+        match = self._git_push_re.search(text)
+        if match:
+            branch = match.group("branch")
+            params = {}
+            if branch:
+                params["branch"] = branch
+            return ActionJSON(
+                type="GitPush",
+                params=params
+            )
+        
+        # Git pull
+        match = self._git_pull_re.search(text)
+        if match:
+            branch = match.group("branch")
+            params = {}
+            if branch:
+                params["branch"] = branch
+            return ActionJSON(
+                type="GitPull",
+                params=params
+            )
+        
+        # Git remote add
+        match = self._git_remote_re.search(text)
+        if match:
+            name = match.group("name")
+            url = match.group("url")
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "name": name,
+                    "url": url
+                }
             )
         
         # Git graph (UI command - handled by CLI/UI layer)
