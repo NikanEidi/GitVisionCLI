@@ -259,7 +259,7 @@ git push -u origin main
 | **[QUICKSTART.md](docs/QUICKSTART.md)** | 5-minute getting started guide |
 | **[COMMANDS.md](docs/COMMANDS.md)** | Complete command reference with examples |
 | **[FEATURES.md](docs/FEATURES.md)** | In-depth feature documentation |
-| **[TESTING_GUIDE.md](TESTING_GUIDE.md)** | Comprehensive testing walkthrough |
+| **[RUN_AND_TEST.md](RUN_AND_TEST.md)** | Comprehensive testing and validation guide |
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute to GitVisionCLI |
 
 </div>

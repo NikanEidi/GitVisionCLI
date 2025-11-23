@@ -76,15 +76,19 @@ class TreePanel:
                 extension = "    " if is_last else "│   "
 
                 if entry.is_dir():
-                    # Unicode-style expansion arrow to indicate an expanded folder.
-                    icon = "▾ "
+                    # Enhanced folder icon with better visual design
+                    icon = f"{BOLD}{ELECTRIC_CYAN}📁{RESET} " if color else "📁 "
                     name = f"{entry.name}/"
                     if color:
                         name = f"{BOLD}{ELECTRIC_CYAN}{name}{RESET}"
                 else:
-                    # Simple bullet for files; color and extension mapping carry the
-                    # primary semantic weight so we avoid wide glyphs here.
-                    icon = "• "
+                    # Enhanced file icon with color coding
+                    file_icon = "📄 "
+                    if color:
+                        file_color = self._get_file_color(entry)
+                        icon = f"{file_color}{file_icon}{RESET}"
+                    else:
+                        icon = file_icon
                     name = entry.name
                     if color:
                         name = f"{self._get_file_color(entry)}{name}{RESET}"
@@ -136,4 +140,32 @@ class TreePanel:
         print(self.render_color())
 
     def render_content_lines(self) -> List[str]:
-        return self.render().split("\n")
+        """
+        Enhanced render for dual-panel with better visual design.
+        """
+        lines: List[str] = []
+        lines.append("")  # Top spacer
+        
+        # Enhanced header with better styling
+        header = f"{BOLD}{ELECTRIC_CYAN}📁 {self.base_dir.name}/{RESET}"
+        lines.append(f" {header}")
+        lines.append("")
+        
+        # Build tree with enhanced colors
+        tree_lines = self._build_tree(self.base_dir, color=True)
+        for line in tree_lines:
+            # Enhance tree lines with better visual design
+            enhanced_line = f" {line}"
+            lines.append(enhanced_line)
+        
+        lines.append("")
+        
+        # Enhanced footer with better stats display
+        total_items = len(tree_lines)
+        footer = (
+            f"{DIM}{MID_GRAY}Total: {BOLD}{ELECTRIC_CYAN}{total_items}{RESET}{DIM}{MID_GRAY} items "
+            f"(max depth: {self.max_depth}){RESET}"
+        )
+        lines.append(f" {footer}")
+        
+        return lines

@@ -31,6 +31,71 @@ from gitvisioncli.ui.colors import (
 
 logger = logging.getLogger(__name__)
 
+# ANSI escape sequence pattern
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return ANSI_RE.sub("", text)
+
+
+def _visible_len(text: str) -> int:
+    """Get visible length of text ignoring ANSI codes."""
+    return len(_strip_ansi(text))
+
+
+def _truncate_ansi_aware(text: str, max_visible: int) -> str:
+    """
+    Truncate text containing ANSI codes without breaking escape sequences.
+    
+    Args:
+        text: Text that may contain ANSI escape sequences
+        max_visible: Maximum visible characters (ignoring ANSI codes)
+    
+    Returns:
+        Truncated text with ellipsis if needed, preserving ANSI sequences
+    """
+    if not text:
+        return ""
+    
+    visible = _visible_len(text)
+    if visible <= max_visible:
+        return text
+    
+    # ANSI-aware truncation: iterate character by character, tracking ANSI state
+    out = []
+    vis_count = 0
+    in_ansi = False
+    max_vis = max_visible - 1  # Reserve 1 char for ellipsis
+    
+    i = 0
+    while i < len(text) and vis_count < max_vis:
+        ch = text[i]
+        if ch == "\x1b" and i + 1 < len(text) and text[i + 1] == "[":
+            # Start of ANSI sequence
+            in_ansi = True
+            out.append(ch)
+        elif in_ansi:
+            # Inside ANSI sequence - always include
+            out.append(ch)
+            if ch == "m":
+                # End of ANSI sequence
+                in_ansi = False
+        else:
+            # Regular character - count towards visible length
+            out.append(ch)
+            vis_count += 1
+        i += 1
+    
+    # Add ellipsis and close any open ANSI sequences
+    result = "".join(out)
+    if in_ansi:
+        # Close any open ANSI sequence
+        result += "\x1b[0m"
+    result += "…"
+    return result
+
 
 class EditorPanel:
     """
@@ -286,31 +351,46 @@ class EditorPanel:
         line_num_width = len(str(max_lines if max_lines > 0 else 1))
 
         if max_lines == 0 or (max_lines == 1 and visible_content[0] == ""):
-            lines.append(" <empty file>")
+            empty_msg = f"{DIM}{MID_GRAY}<empty file>{RESET}"
+            lines.append(f" {empty_msg}")
         else:
             for i in range(max_lines):
                 ln = f"{i + 1:>{line_num_width}}"
                 raw = visible_content[i]
-                # Truncate to width if necessary (simple safeguard)
-                if self.width > 10 and len(raw) > self.width - (line_num_width + 4):
-                    raw = raw[: self.width - (line_num_width + 7)] + "..."
-                lines.append(f" {ln} │ {raw}")
+                # Apply syntax highlighting for better visual design
+                highlighted = self._apply_syntax_highlighting(raw)
+                # CRITICAL FIX: Use ANSI-aware truncation to avoid breaking escape sequences
+                # Calculate max visible width for the content (accounting for line number, separator, padding)
+                max_content_width = self.width - (line_num_width + 4)  # line_num + " │ " + padding
+                if self.width > 10 and _visible_len(highlighted) > max_content_width:
+                    # Truncate using ANSI-aware function to preserve escape sequences
+                    highlighted = _truncate_ansi_aware(highlighted, max_content_width) + f"{DIM}{MID_GRAY}{RESET}"
+                # Enhanced line number styling
+                ln_colored = f"{DIM}{DARK_GRAY}{ln}{RESET}"
+                separator = f"{DIM}{DARK_GRAY}│{RESET}"
+                lines.append(f" {ln_colored} {separator} {highlighted}")
 
-        # Footer with basic stats
+        # Enhanced footer with better visual design
         lines.append("")  # Spacer
-        footer = f"Lines: {len(self.content)}"
+        footer_parts = []
+        
+        # Lines count with icon
+        footer_parts.append(f"{BOLD}{ELECTRIC_CYAN}Lines:{RESET} {BOLD}{BRIGHT_MAGENTA}{len(self.content)}{RESET}")
+        
         try:
             if self.file_path:
                 filename = self.file_path.name
-                status = " [MODIFIED]" if self.is_modified else ""
-                footer += f" | File: {filename}{status}"
+                status_icon = f"{BOLD}{GLITCH_RED}●{RESET}" if self.is_modified else f"{GLITCH_GREEN}●{RESET}"
+                status_text = f"{BOLD}{GLITCH_RED}MODIFIED{RESET}" if self.is_modified else f"{DIM}{MID_GRAY}saved{RESET}"
+                footer_parts.append(f"{BOLD}{NEON_PURPLE}File:{RESET} {filename} {status_icon} {status_text}")
             if self.file_path and self.file_path.exists():
                 kb = self.file_path.stat().st_size / 1024
-                footer += f" | Size: {kb:.2f}KB"
+                footer_parts.append(f"{DIM}{MID_GRAY}Size: {kb:.2f}KB{RESET}")
         except (OSError, FileNotFoundError):
             # File might not exist yet; ignore
             pass
 
+        footer = f" {DIM}{DARK_GRAY}│{RESET} ".join(footer_parts)
         lines.append(f" {footer}")
         return lines
 
@@ -754,13 +834,17 @@ class EditorPanel:
         """
         if hasattr(self, '_stream_buffer') and self._stream_buffer:
             # Append final buffer content
-            if self._stream_start_line <= len(self.content):
-                # Replace at current position
-                self.replace_line(self._stream_start_line - 1, self._stream_buffer)
-            else:
-                # Append new line
-                self.content.append(self._stream_buffer)
+            # _stream_start_line is 1-based, so if it's beyond content length, we append
+            if self._stream_start_line > len(self.content):
+                # Append new line(s)
+                buffer_norm = self._normalize_newlines(self._stream_buffer)
+                new_lines = buffer_norm.split("\n")
+                for line in new_lines:
+                    self.content.append(line)
                 self._set_modified(True)
+            else:
+                # Replace at current position (convert 1-based to 0-based)
+                self.replace_line(self._stream_start_line - 1, self._stream_buffer)
             self._notify_change()
         
         # Clear streaming state

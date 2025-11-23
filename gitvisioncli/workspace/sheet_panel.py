@@ -45,12 +45,16 @@ class CommandSheetPanel:
         return text[: width - 1] + "…"
 
     def _section_header(self, title: str) -> List[str]:
-        title_col = f"{BOLD}{ELECTRIC_CYAN}{title}{RESET}"
+        # Enhanced section header with better visual design
+        title_col = f"{BOLD}{ELECTRIC_CYAN}┌─ {title} ─┐{RESET}"
         raw_len = len(self._strip_ansi(title_col))
         if raw_len >= self.width:
             return [title_col]
         pad = (self.width - raw_len) // 2
-        return [(" " * pad) + title_col]
+        header_line = (" " * pad) + title_col
+        separator = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        sep_pad = max(0, (self.width - len(self._strip_ansi(separator))) // 2)
+        return [header_line, " " * sep_pad + separator]
 
     def _workspace_commands(self) -> List[str]:
         cmds = [
@@ -200,7 +204,8 @@ class CommandSheetPanel:
             (".<cmd>", "Run local shell directly (e.g., .ls, .git status)"),
         ]
         for pfx, desc in prefixes:
-            p = f"{BOLD}{BRIGHT_MAGENTA}{pfx:<10}{RESET}"
+            # Enhanced prefix formatting
+            p = f"{BOLD}{ELECTRIC_CYAN}{pfx:<12}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {p} {d}")
         return lines
@@ -218,7 +223,8 @@ class CommandSheetPanel:
         ]
         lines: List[str] = []
         for cmd, desc in shortcuts:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<22}{RESET}"
+            # Enhanced shortcut formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<20}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         return lines
@@ -261,14 +267,19 @@ class CommandSheetPanel:
     def render_content_lines(self) -> List[str]:
         lines: List[str] = []
 
-        # Title
-        title = f"{BOLD}{NEON_PURPLE}GITVISION COMMAND SHEET{RESET}"
+        # Enhanced title with better visual design
+        title = f"{BOLD}{NEON_PURPLE}╔═ GITVISION COMMAND SHEET ═╗{RESET}"
         raw_len = len(self._strip_ansi(title))
         if raw_len < self.width:
             pad = (self.width - raw_len) // 2
             lines.append((" " * pad) + title)
         else:
             lines.append(title)
+        
+        # Add separator under title
+        separator = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        sep_pad = max(0, (self.width - len(self._strip_ansi(separator))) // 2)
+        lines.append(" " * sep_pad + separator)
 
         # Quick usage hint for this panel
         lines.append("")
@@ -361,7 +372,8 @@ class CommandSheetPanel:
             ("git status / git log", "View status/history (via AI)"),
         ]
         for cmd, desc in git_cmds:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")
@@ -384,7 +396,8 @@ class CommandSheetPanel:
             ("open <file>", "Open file in editor"),
         ]
         for cmd, desc in nl_file_ops:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")
@@ -401,7 +414,8 @@ class CommandSheetPanel:
             ("rename folder <old> to <new>", "Rename folder"),
         ]
         for cmd, desc in nl_folder_ops:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")
@@ -419,7 +433,8 @@ class CommandSheetPanel:
             ("insert <text> at line 5", "Insert before line 5"),
         ]
         for cmd, desc in nl_line_ops:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")
@@ -439,7 +454,8 @@ class CommandSheetPanel:
             ("git merge <branch>", "Merge branch"),
         ]
         for cmd, desc in nl_git_ops:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")
@@ -454,7 +470,8 @@ class CommandSheetPanel:
             ("create github pr 'title'", "Create pull request with title"),
         ]
         for cmd, desc in nl_github_ops:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")
@@ -470,7 +487,8 @@ class CommandSheetPanel:
             ("create folder X and go to it", "Create folder + change directory"),
         ]
         for cmd, desc in nl_dir_ops:
-            c = f"{BOLD}{BRIGHT_MAGENTA}{cmd:<24}{RESET}"
+            # Enhanced command formatting
+            c = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd:<22}{RESET}"
             d = f"{DIM}{MID_GRAY}{desc}{RESET}"
             lines.append(f"  {c} {d}")
         lines.append("")

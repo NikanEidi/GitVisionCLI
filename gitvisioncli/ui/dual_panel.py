@@ -16,8 +16,11 @@ from gitvisioncli.ui.colors import (
     NEON_PURPLE, BRIGHT_MAGENTA, ELECTRIC_CYAN,
     DARK_GRAY, MID_GRAY
 )
-from gitvisioncli.workspace.right_panel import RightPanel
 from gitvisioncli.ui.banner import get_terminal_width
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from gitvisioncli.workspace.right_panel import RightPanel
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +81,7 @@ class DualPanelRenderer:
     Automatically clamps height to terminal height.
     """
 
-    def __init__(self, right_panel: RightPanel, config: Optional[DualPanelConfig] = None):
+    def __init__(self, right_panel: "RightPanel", config: Optional[DualPanelConfig] = None):
         self.right_panel = right_panel
         self.config = config or DualPanelConfig()
         self.left_width = 0

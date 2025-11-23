@@ -906,7 +906,7 @@ simple natural language commands may already be handled by the direct engine."""
             # These are handled by CLI layer before reaching here, but we check anyway
             if direct_action.get("type") == "ShowGitGraph":
                 # CLI should have already handled this, but yield message if we get here
-                yield "Git graph command detected.\n"
+                yield "Git graph command detected (should be handled by CLI).\n"
                 return
             
             # Handle compound actions (e.g., CreateFolderAndCD)
@@ -1266,14 +1266,28 @@ simple natural language commands may already be handled by the direct engine."""
         if reply_text and editor_panel and hasattr(editor_panel, 'write_stream'):
             try:
                 # Stream character by character for live typing effect
+                # Track position to handle partial failures
+                streamed_count = 0
                 for char in reply_text:
                     editor_panel.write_stream(char)
                     yield char
+                    streamed_count += 1
                 editor_panel.finish_stream()
             except Exception as e:
                 logger.debug(f"Editor streaming failed: {e}")
-                # Fall back to normal yield
-                yield reply_text
+                # CRITICAL FIX: If streaming failed partway through, we've only yielded
+                # chars up to the failure point. Yield the remaining text to ensure
+                # complete delivery. This prevents truncated output when write_stream()
+                # raises an exception mid-stream.
+                if streamed_count < len(reply_text):
+                    remaining_text = reply_text[streamed_count:]
+                    yield remaining_text
+                # Try to finish the stream if possible
+                try:
+                    if hasattr(editor_panel, 'finish_stream'):
+                        editor_panel.finish_stream()
+                except Exception:
+                    pass
         else:
             # Normal yield if no editor or streaming not available
             yield reply_text
@@ -1644,7 +1658,8 @@ simple natural language commands may already be handled by the direct engine."""
         
         Usage:
             async for message in chat_engine.run_live_edit_session(...):
-                print(message)  # Show to user
+                # Yield messages for UI display (not print)
+                pass
         """
         from gitvisioncli.core.natural_language_mapper import LiveEditIntent
         
@@ -2663,8 +2678,13 @@ Please provide edit instructions."""
         Updates internal tracking of the last modified file and triggers UI refresh.
         """
         # 1. Track last modified path for "open editor" heuristics
-        if result.status == ActionStatus.SUCCESS and result.data and "path" in result.data:
-            self._last_modified_path = result.data["path"]
+        # Prefer path from result.data, fallback to first modified file
+        if result.status == ActionStatus.SUCCESS:
+            if result.data and "path" in result.data:
+                self._last_modified_path = result.data["path"]
+            elif result.modified_files and len(result.modified_files) > 0:
+                # Use first modified file as fallback
+                self._last_modified_path = result.modified_files[0]
 
         # 2. Trigger UI Refresh if files were modified
         if result.modified_files:

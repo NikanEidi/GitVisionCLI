@@ -58,13 +58,14 @@ class MarkdownPanel:
         
     def render_content_lines(self) -> List[str]:
         """
-        Plain text version for dual-panel mode, NO HEADER.
+        Enhanced plain text version for dual-panel mode with better visual design.
         """
         lines = self.content.split("\n") if self.content else []
         result: List[str] = [""] # Initial spacer
         
         if self.content is None:
-            result.append(" <No file loaded>")
+            no_file_msg = f"{DIM}{MID_GRAY}📄 <No file loaded>{RESET}"
+            result.append(f" {no_file_msg}")
             return result
 
         i = 0
@@ -93,18 +94,29 @@ class MarkdownPanel:
                 i += 1
                 continue
 
-            # Headers (H1/H2 get underlines)
+            # Enhanced headers with better visual design
             header_match = re.match(r'^(#{1,6})\s+(.+)$', line)
             if header_match:
                 level = len(header_match.group(1))
                 text = header_match.group(2)
                 
-                # Add padding
-                result.append(f" {line}")
+                # Enhanced header styling with icons and colors
                 if level == 1:
-                    result.append(' ' + ('═' * len(text)))
+                    # CRITICAL FIX: Add closing ╗ bracket to match consistent pattern
+                    header_line = f" {BOLD}{ELECTRIC_CYAN}╔═ {text} ═╗{RESET}"
+                    result.append(header_line)
+                    # CRITICAL FIX: Underline width must match header width
+                    # Header: " ╔═ {text} ═╗" = 1(space) + 1(╔) + 1(═) + 1(space) + len(text) + 1(space) + 1(═) + 1(╗) = len(text) + 7
+                    # Underline: " ═..." = 1(space) + N(═) = len(text) + 7, so N = len(text) + 6
+                    result.append(' ' + f"{DIM}{DARK_GRAY}{'═' * (len(text) + 6)}{RESET}")
                 elif level == 2:
-                    result.append(' ' + ('─' * len(text)))
+                    header_line = f" {BOLD}{NEON_PURPLE}▶ {text}{RESET}"
+                    result.append(header_line)
+                    result.append(' ' + f"{DIM}{DARK_GRAY}{'─' * (len(text) + 2)}{RESET}")
+                else:
+                    prefix = "  " * (level - 3) + "• "
+                    header_line = f" {BOLD}{BRIGHT_MAGENTA}{prefix}{text}{RESET}"
+                    result.append(header_line)
                 
                 i += 1
                 continue
@@ -124,10 +136,16 @@ class MarkdownPanel:
                 i += 1
                 continue
 
-            # List Items
-            if re.match(r'^\s*[*\-\+\d\.]\s+', line):
-                # Add padding
-                result.append(f" {line}")
+            # Enhanced list items with better visual design
+            list_match = re.match(r'^(\s*)([*\-\+]|\d+\.)\s+(.+)$', line)
+            if list_match:
+                indent, marker, text = list_match.groups()
+                # Enhanced bullet styling
+                if marker in ['*', '-', '+']:
+                    bullet = f"{BOLD}{ELECTRIC_CYAN}•{RESET}"
+                else:
+                    bullet = f"{BOLD}{BRIGHT_MAGENTA}{marker}{RESET}"
+                result.append(f" {indent}{bullet} {text}")
                 i += 1
                 continue
 
@@ -138,9 +156,9 @@ class MarkdownPanel:
             
         result.append("")
 
-        # Add a footer/separator line manually
-        footer_line = "──────────────────────────────────────────────────"
-        result.append(f" {footer_line}")
+        # Enhanced footer/separator with better visual design
+        footer_sep = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        result.append(f" {footer_sep}")
 
         return result
 

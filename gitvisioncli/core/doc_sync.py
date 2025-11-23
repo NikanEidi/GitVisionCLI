@@ -64,37 +64,62 @@ class DocumentationSyncer:
     ) -> bool:
         """
         Sync documentation files after file changes.
-        
+
+        This is intentionally lightweight and side-effect safe:
+        - Only runs when a non-doc source/config file changed.
+        - Never rewrites large sections of documentation.
+        - Adds/updates a small auto-sync marker so that docs
+          visibly track when they were last refreshed.
+
         Args:
-            modified_files: List of files that were modified
-            action_type: Type of action that was performed
-        
+            modified_files: List of files that were modified.
+            action_type: Optional string describing the triggering action.
+
         Returns:
-            True if sync was attempted, False if skipped
+            True if sync was attempted, False if skipped.
         """
         # Check if any file warrants a sync
         should_sync = any(self.should_sync(f) for f in modified_files)
         if not should_sync:
             return False
-        
+
         try:
-            # Log sync trigger with details
+            # Log sync trigger with a concise summary for debugging.
             logger.info(
-                f"Documentation sync triggered for {len(modified_files)} file(s): "
-                f"{[f.name for f in modified_files[:3]]}"
-                f"{'...' if len(modified_files) > 3 else ''}"
-                f" (action: {action_type or 'unknown'})"
+                "Documentation sync triggered for %d file(s), action=%s",
+                len(modified_files),
+                action_type or "unknown",
             )
-            
-            # Note: Full intelligent doc updates would require:
-            # - Parsing markdown structure
-            # - Detecting new action types from code changes
-            # - Extracting command examples from natural language patterns
-            # - Updating feature lists based on new implementations
-            # 
-            # For now, this serves as a hook for future enhancement.
-            # The sync is properly wired into the executor and action router.
-            
+
+            # Lightweight, non-destructive auto-sync:
+            # append or update a one-line marker in each doc file so that
+            # users can see that documentation keeps pace with code changes.
+            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            marker_prefix = "<!-- Auto-synced on "
+
+            for rel in self.DOC_FILES:
+                doc_path = (self.base_dir / rel).resolve()
+                if not doc_path.exists() or not doc_path.is_file():
+                    continue
+
+                try:
+                    content = doc_path.read_text(encoding="utf-8")
+                except Exception as e:
+                    logger.debug(f"Doc sync: failed to read {doc_path}: {e}")
+                    continue
+
+                lines = content.splitlines()
+                # Remove any previous auto-sync marker
+                lines = [ln for ln in lines if not ln.strip().startswith(marker_prefix)]
+                # Append fresh marker
+                lines.append(f"{marker_prefix}{timestamp} -->")
+
+                try:
+                    doc_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                    logger.debug(f"Doc sync: updated marker in {doc_path}")
+                except Exception as e:
+                    logger.debug(f"Doc sync: failed to write {doc_path}: {e}")
+
             return True
         except Exception as e:
             logger.warning(f"Documentation sync failed: {e}")

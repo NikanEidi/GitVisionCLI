@@ -6,7 +6,7 @@
 
 ```bash
 # Navigate to project directory
-cd /Users/kuroko/Desktop/APPs/GitVisionCLI
+cd /path/to/GitVisionCLI
 
 # Install all dependencies
 pip install -e .
@@ -33,8 +33,8 @@ pipx install -e .
 # First install dependencies
 pip install -e .
 
-# Then run directly
-cd /Users/kuroko/Desktop/APPs/GitVisionCLI
+# Then run directly from the project root
+cd /path/to/GitVisionCLI
 python3 -m gitvisioncli.cli
 ```
 

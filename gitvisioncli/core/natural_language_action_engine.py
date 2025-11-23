@@ -123,6 +123,10 @@ class NaturalLanguageActionEngine:
         
         # Git operations
         self._git_init_re = re.compile(r"\bgit\s+init\b", re.IGNORECASE)
+        # CRITICAL FIX: Require explicit "git" prefix for status/log to avoid false positives
+        # from common English words like "What's the status?" or "check the log file"
+        self._git_status_re = re.compile(r"\bgit\s+status\b", re.IGNORECASE)
+        self._git_log_re = re.compile(r"\bgit\s+log\b", re.IGNORECASE)
         self._git_add_re = re.compile(
             r"\b(?:git\s+)?add\s+(?P<path>\.|all|[^\s]+)\b", re.IGNORECASE
         )
@@ -201,6 +205,8 @@ class NaturalLanguageActionEngine:
         - "delete ln5" → "delete line 5"
         - "rm 2" → "remove line 2" (if context suggests line operation)
         - "replace line5" → "replace line 5"
+        - "edit line3" → "edit line 3"
+        - "add at line10" → "add at line 10"
         """
         # Fix "line1", "line5", etc. → "line 1", "line 5"
         text = re.sub(r"\bline(\d+)\b", r"line \1", text, flags=re.IGNORECASE)
@@ -222,6 +228,18 @@ class NaturalLanguageActionEngine:
         
         # Fix "delete line5", "remove line5" → "delete line 5", "remove line 5"
         text = re.sub(r"\b(delete|remove)\s+line(\d+)\b", r"\1 line \2", text, flags=re.IGNORECASE)
+        
+        # Fix "edit line3", "change line7" → "edit line 3", "change line 7"
+        text = re.sub(r"\b(edit|change|update)\s+line(\d+)\b", r"\1 line \2", text, flags=re.IGNORECASE)
+        
+        # Fix "add at line10", "insert at line5" → "add at line 10", "insert at line 5"
+        text = re.sub(r"\b(add|insert|write)\s+at\s+line(\d+)\b", r"\1 at line \2", text, flags=re.IGNORECASE)
+        
+        # Fix "line3-7", "line5~10" → "line 3-7", "line 5-10"
+        text = re.sub(r"\bline(\d+)\s*[-~]\s*(\d+)\b", r"line \1-\2", text, flags=re.IGNORECASE)
+        
+        # Fix "lines3-7", "lines5~10" → "lines 3-7", "lines 5-10"
+        text = re.sub(r"\blines(\d+)\s*[-~]\s*(\d+)\b", r"lines \1-\2", text, flags=re.IGNORECASE)
         
         return text
     
@@ -501,6 +519,14 @@ class NaturalLanguageActionEngine:
         # Git init
         if self._git_init_re.search(text):
             return ActionJSON(type="GitInit", params={})
+        
+        # Git status (routed to RunGitCommand for display)
+        if self._git_status_re.search(text):
+            return ActionJSON(type="RunGitCommand", params={"command": "status"})
+        
+        # Git log (routed to RunGitCommand for display)
+        if self._git_log_re.search(text):
+            return ActionJSON(type="RunGitCommand", params={"command": "log"})
         
         # Git add
         match = self._git_add_re.search(text)

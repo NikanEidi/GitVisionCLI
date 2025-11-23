@@ -5,7 +5,11 @@ Tests the new methods in ProviderNormalizer and NaturalLanguageEditMapper.
 """
 
 import sys
-sys.path.insert(0, '/Users/kuroko/Desktop/APPs/GitVisionCLI')
+from pathlib import Path
+
+# Ensure local project root is importable in a portable way
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from gitvisioncli.core.provider_normalizer import ProviderNormalizer, NormalizedToolCall
 from gitvisioncli.core.natural_language_mapper import NaturalLanguageEditMapper, FileContext

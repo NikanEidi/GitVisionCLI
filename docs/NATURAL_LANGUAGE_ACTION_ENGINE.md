@@ -13,9 +13,9 @@ The Natural Language Action Engine is GitVision's deterministic converter that t
 
 ### 2. **Grammar Normalization**
 Automatically fixes broken grammar:
-- `"remove line1"` → `"remove line 1"`
-- `"delete ln5"` → `"delete line 5"`
-- `"rm 2"` → `"remove line 2"` (when context suggests line operation)
+- "remove line1" → "remove line 1"
+- "delete ln5" → "delete line 5"
+- "rm 2" → "remove line 2" (when context suggests line operation)
 
 ### 3. **Comprehensive Action Support**
 
@@ -25,9 +25,9 @@ Automatically fixes broken grammar:
 
 #### Git Operations
 - `git init`
-- `commit all with message X`
-- `switch to branch dev`
-- `create new branch testing`
+- `git add`, `git commit "message"`
+- `branch dev`, `checkout dev`, `merge main`
+- `git push`, `git pull`, `git remote add origin <url>`
 - `show git graph`
 
 #### GitHub Operations
@@ -130,6 +130,9 @@ else:
 - `GitBranch(name)`
 - `GitCheckout(branch)`
 - `GitMerge(branch)`
+- `GitPush(branch?)`
+- `GitPull(branch?)`
+- `GitRemote(name, url)`
 - `ShowGitGraph()` (UI command)
 
 ### GitHub Operations
@@ -164,10 +167,13 @@ User: "create file hello.py with print('hi')"
 → Action: CreateFile(path="hello.py", content="print('hi')")
 ```
 
-### Example 3: Git Commit
+### Example 3: Git Commit & Push
 ```
 User: 'commit all with message "Initial commit"'
 → Action: GitCommit(message="Initial commit")
+
+User: 'git push -u origin main'
+→ Action: GitPush(branch="main")
 ```
 
 ### Example 4: Broken Grammar

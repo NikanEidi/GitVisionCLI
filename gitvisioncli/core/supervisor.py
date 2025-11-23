@@ -2230,16 +2230,33 @@ class ActionSupervisor:
         success, stdout, stderr = self._run_git_command(args, require_repo=require_repo)
 
         if success:
+            # For display commands (status, log), include output in message
+            if args[0] in ("status", "log"):
+                output_preview = stdout.strip()[:200] if stdout.strip() else ""
+                if len(stdout.strip()) > 200:
+                    output_preview += "..."
+                return ActionResult(
+                    status=ActionStatus.SUCCESS,
+                    message=f"Git {args[0]}:\n{output_preview}" if output_preview else f"Git {args[0]} executed",
+                    data={"stdout": stdout, "stderr": stderr},
+                )
             return ActionResult(
                 status=ActionStatus.SUCCESS,
                 message=f"Git command executed: {' '.join(args)}",
                 data={"stdout": stdout, "stderr": stderr},
             )
 
+        # User-friendly error messages
+        error_msg = stderr.strip() if stderr.strip() else "Unknown error"
+        if "not a git repository" in error_msg.lower():
+            error_msg = "Not a git repository. Run 'git init' first."
+        elif "no such file or directory" in error_msg.lower():
+            error_msg = f"Git command failed: {error_msg}"
+        
         return ActionResult(
             status=ActionStatus.FAILURE,
             message=f"Git command failed: {' '.join(args)}",
-            error=stderr,
+            error=error_msg,
             data={"stdout": stdout},
         )
 

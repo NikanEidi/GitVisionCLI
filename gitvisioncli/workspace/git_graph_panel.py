@@ -46,10 +46,14 @@ class GitGraphPanel:
         return trimmed
 
     def _header(self) -> List[str]:
-        title = f"{BOLD}{NEON_PURPLE}GIT COMMIT GRAPH{RESET}"
+        # Enhanced header with better visual design
+        title = f"{BOLD}{NEON_PURPLE}╔═ GIT COMMIT GRAPH ═╗{RESET}"
         raw_len = len(self._strip_ansi(title))
         pad = max(0, (self.width - raw_len) // 2)
-        return ["", " " * pad + title, ""]
+        header_line = " " * pad + title
+        separator = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        sep_pad = max(0, (self.width - len(self._strip_ansi(separator))) // 2)
+        return ["", header_line, " " * sep_pad + separator, ""]
 
     def render_content_lines(self) -> List[str]:
         """
@@ -129,7 +133,12 @@ class GitGraphPanel:
             lines.append(self._fit_line(pretty))
 
         lines.append("")
-        lines.append(
-            f"{DIM}{MID_GRAY}Showing up to 50 recent commits across all branches.{RESET}"
-        )
+        # Enhanced footer with better visual design
+        footer_sep = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        sep_pad = max(0, (self.width - len(self._strip_ansi(footer_sep))) // 2)
+        lines.append(" " * sep_pad + footer_sep)
+        lines.append("")
+        info_text = f"{DIM}{MID_GRAY}Showing up to 50 recent commits across all branches.{RESET}"
+        info_pad = max(0, (self.width - len(self._strip_ansi(info_text))) // 2)
+        lines.append(" " * info_pad + info_text)
         return lines

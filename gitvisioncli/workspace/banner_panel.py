@@ -187,39 +187,51 @@ class BannerPanel:
         lines.append((" " * left_pad) + sep_line)
         lines.append("")
         
-        # Commands sections
+        # Commands sections with enhanced visual design
         for section_name, commands in ESSENTIAL_COMMANDS:
-            # Section header - centered, neon cyan
-            header_text = f"{BOLD}{ELECTRIC_CYAN}{section_name}{RESET}"
+            # Section header - centered, neon cyan with decorative elements
+            header_text = f"{BOLD}{ELECTRIC_CYAN}┌─ {section_name} ─┐{RESET}"
             header_len = len(self._strip_ansi(header_text))
             left_pad = (self.width - header_len) // 2
             lines.append((" " * left_pad) + header_text)
             lines.append("")
             
-            # Commands with clean formatting
+            # Commands with enhanced formatting and better visual hierarchy
             for cmd, desc in commands:
-                # Format: "  command             description"
-                # Adjust spacing based on width
-                cmd_col = f"{BOLD}{BRIGHT_MAGENTA}{cmd}{RESET}"
+                # Enhanced formatting with better spacing and visual indicators
+                cmd_col = f"{BOLD}{BRIGHT_MAGENTA}▶ {cmd}{RESET}"
                 desc_col = f"{DIM}{MID_GRAY}{desc}{RESET}"
 
                 if self.width >= 60:
-                    line = f"    {cmd_col:<20} {desc_col}"
+                    # CRITICAL FIX: Use ANSI-aware padding to avoid counting escape codes
+                    # Calculate visible width and pad accordingly
+                    cmd_visible = len(self._strip_ansi(cmd_col))
+                    padding_needed = max(0, 24 - cmd_visible)
+                    line = f"    {cmd_col}{' ' * padding_needed} {desc_col}"
                 elif self.width >= 45:
-                    line = f"  {cmd_col:<18} {desc_col}"
+                    # CRITICAL FIX: Use ANSI-aware padding
+                    cmd_visible = len(self._strip_ansi(cmd_col))
+                    padding_needed = max(0, 22 - cmd_visible)
+                    line = f"  {cmd_col}{' ' * padding_needed} {desc_col}"
                 else:
-                    # Stack vertically for narrow panels
+                    # Stack vertically for narrow panels with better indentation
                     lines.append(f"  {cmd_col}")
-                    lines.append(f"    → {desc_col}")
+                    lines.append(f"      {DIM}{DARK_GRAY}└─{RESET} {desc_col}")
                     continue
                 
                 lines.append(self._fit_line(line, self.width))
             
             lines.append("")
         
-        # Footer
+        # Enhanced footer with better visual design
         lines.append("")
-        footer = f"{DIM}{DEEP_CYAN}💬 Ask AI anything in natural language!{RESET}"
+        footer_sep = f"{DIM}{DARK_GRAY}{'─' * min(self.width - 4, 50)}{RESET}"
+        footer_sep_len = len(self._strip_ansi(footer_sep))
+        left_pad_sep = (self.width - footer_sep_len) // 2
+        lines.append((" " * left_pad_sep) + footer_sep)
+        lines.append("")
+        
+        footer = f"{BOLD}{ELECTRIC_CYAN}💬{RESET} {DIM}{MID_GRAY}Ask AI anything in natural language!{RESET}"
         footer_len = len(self._strip_ansi(footer))
         left_pad = (self.width - footer_len) // 2
         lines.append((" " * left_pad) + footer)

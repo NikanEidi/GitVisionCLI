@@ -1225,10 +1225,6 @@ async def cmd_demo(args) -> int:
     os.chdir(demo_dir)
     
     print(f"{ELECTRIC_CYAN}✓{RESET} Created demo workspace: {demo_dir}\n")
-    
-    # DEBUG: Check dry_run state
-    # We can't access engine here yet, it's initialized below.
-    # We'll add verification step after engine init.
 
     
     # Load config and initialize engine
