@@ -64,6 +64,7 @@ class CommandSheetPanel:
             (":markdown <file>", "Preview markdown file with rendering"),
             (":sheet / :commands", "Show this live command sheet"),
             (":models", "AI Model Manager (engines, models, API keys)"),
+            (":set-ai <model>", "Switch AI model/engine (e.g., :set-ai gpt-4o)"),
             (":git-graph / :gitgraph", "Git commit graph visualization"),
             (":live-edit <file>", "AI Live Editor Mode (edit file via AI)"),
             (":save", "Save current editor buffer to disk"),
@@ -165,15 +166,60 @@ class CommandSheetPanel:
             "Engines: Ollama (local), OpenAI / Gemini / Claude (cloud API)."
             f"{RESET}"
         )
+        lines.append("")
         lines.append(
-            f"{DIM}{DARK_GRAY}"
-            "Use :models to see available models, key status, and provider setup tips."
-            f"{RESET}"
+            f"{BOLD}{ELECTRIC_CYAN}📋 How to Change Models:{RESET}"
+        )
+        lines.append("")
+        lines.append(
+            f"  {DIM}{MID_GRAY}1. In-app (runtime):{RESET} {BOLD}{BRIGHT_MAGENTA}:set-ai <model>{RESET}"
         )
         lines.append(
+            f"     {DIM}{MID_GRAY}Examples:{RESET}"
+        )
+        lines.append(
+            f"     {BOLD}{BRIGHT_MAGENTA}  :set-ai gpt-4o{RESET} {DIM}{MID_GRAY}(OpenAI){RESET}"
+        )
+        lines.append(
+            f"     {BOLD}{BRIGHT_MAGENTA}  :set-ai gemini-1.5-pro{RESET} {DIM}{MID_GRAY}(Gemini){RESET}"
+        )
+        lines.append(
+            f"     {BOLD}{BRIGHT_MAGENTA}  :set-ai claude-3-5-sonnet{RESET} {DIM}{MID_GRAY}(Claude){RESET}"
+        )
+        lines.append(
+            f"     {BOLD}{BRIGHT_MAGENTA}  :set-ai llama3.1{RESET} {DIM}{MID_GRAY}(Ollama){RESET}"
+        )
+        lines.append("")
+        lines.append(
+            f"  {DIM}{MID_GRAY}2. Via CLI flag:{RESET} {BOLD}{BRIGHT_MAGENTA}gitvision --model <name>{RESET}"
+        )
+        lines.append(
+            f"     {DIM}{MID_GRAY}Example:{RESET} {BOLD}{BRIGHT_MAGENTA}gitvision --model gemini-1.5-pro interactive{RESET}"
+        )
+        lines.append("")
+        lines.append(
+            f"  {DIM}{MID_GRAY}3. Edit config.json:{RESET}"
+        )
+        lines.append(
+            f"     {DIM}{MID_GRAY}Edit:{RESET} {BOLD}{BRIGHT_MAGENTA}gitvisioncli/config/config.json{RESET}"
+        )
+        lines.append(
+            f"     {DIM}{MID_GRAY}Set:{RESET} {BOLD}{BRIGHT_MAGENTA}\"model\": \"gemini-1.5-pro\"{RESET}"
+        )
+        lines.append(
+            f"     {DIM}{MID_GRAY}Set:{RESET} {BOLD}{BRIGHT_MAGENTA}\"active_provider\": \"gemini\"{RESET}"
+        )
+        lines.append("")
+        lines.append(
             f"{DIM}{DARK_GRAY}"
-            "API keys live in config.json under 'providers'. Use :set-ai <name> to switch "
-            "models (e.g. gpt-4o, gemini-1.5-pro, claude-3.5-sonnet, or an Ollama model)."
+            "Available models: gpt-4o, gpt-4o-mini, gemini-1.5-pro, gemini-1.5-flash, "
+            "claude-3-5-sonnet, claude-3-opus, llama3.1, qwen2.5-coder, mistral, etc."
+            f"{RESET}"
+        )
+        lines.append("")
+        lines.append(
+            f"{DIM}{DARK_GRAY}"
+            "Use :models panel to see configured providers, API key status, and setup instructions."
             f"{RESET}"
         )
         return lines
@@ -352,7 +398,7 @@ class CommandSheetPanel:
         lines += self._keyboard_shortcuts()
         lines.append("")
 
-        # Git commands section (legacy - now covered in Natural Language section)
+        # Git commands section (comprehensive)
         lines += self._section_header("🔁 Git Commands (All Methods)")
         lines.append("")
         lines.append(
@@ -360,16 +406,20 @@ class CommandSheetPanel:
         )
         lines.append("")
         git_cmds = [
-            (":git-graph", "Open Git graph panel (or :gitgraph, or 'git graph')"),
-            ("git init", "Initialize repository (direct NLAE)"),
-            ("git add <files>", "Stage files (direct NLAE)"),
-            ("git commit 'message'", "Commit with message (direct NLAE)"),
-            ("git branch <name>", "Create branch (direct NLAE)"),
-            ("git checkout <branch>", "Switch branch (direct NLAE)"),
-            ("git merge <branch>", "Merge branch (direct NLAE)"),
-            ("git graph", "Open Git graph panel (natural language)"),
-            ("git push / git pull", "Remote sync (via AI)"),
-            ("git status / git log", "View status/history (via AI)"),
+            (":git-graph / :gitgraph", "Open Git graph panel"),
+            ("git graph", "Open Git graph (natural language)"),
+            ("git init", "Initialize repository"),
+            ("git add <files>", "Stage files (or 'git add .' for all)"),
+            ("git commit 'message'", "Commit with message"),
+            ("git status", "Show working tree status"),
+            ("git log", "Show commit history"),
+            ("git branch <name>", "Create new branch"),
+            ("git checkout <branch>", "Switch to branch"),
+            ("git merge <branch>", "Merge branch into current"),
+            ("git push", "Push commits to remote"),
+            ("git pull", "Pull from remote"),
+            ("git remote add <name> <url>", "Add remote repository"),
+            ("git remote -v", "List remotes"),
         ]
         for cmd, desc in git_cmds:
             # Enhanced command formatting
@@ -465,9 +515,11 @@ class CommandSheetPanel:
         )
         lines.append("")
         nl_github_ops = [
-            ("create github repo <name>", "Create GitHub repository (public/private)"),
-            ("create github issue 'title'", "Create GitHub issue with title"),
-            ("create github pr 'title'", "Create pull request with title"),
+            ("create github repo <name>", "Create GitHub repository"),
+            ("create github repo <name> private", "Create private repository"),
+            ("create github issue 'title'", "Create GitHub issue"),
+            ("create github pr 'title'", "Create pull request"),
+            ("git push origin main", "Push to GitHub (after remote setup)"),
         ]
         for cmd, desc in nl_github_ops:
             # Enhanced command formatting

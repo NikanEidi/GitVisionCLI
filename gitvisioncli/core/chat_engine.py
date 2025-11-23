@@ -2575,6 +2575,18 @@ Please provide edit instructions."""
             try:
                 genai.configure(api_key=self._gemini_api_key)
                 model_name = self._normalize_model_for_provider("gemini", self.model)
+                # Remove "models/" prefix if present (SDK expects just the model name)
+                # Use case-insensitive check for consistency with rest of codebase
+                model_lower = model_name.lower()
+                if model_lower.startswith("models/"):
+                    model_name = model_name[7:]
+                    model_lower = model_name.lower()  # Recalculate after prefix removal
+                # Ensure valid Gemini model name (case-insensitive check)
+                if not model_lower.startswith("gemini-"):
+                    model_name = "gemini-1.5-pro"
+                else:
+                    # Normalize to lowercase for SDK compatibility
+                    model_name = model_lower
                 model = genai.GenerativeModel(model_name)
                 resp = model.generate_content(
                     prompt,
