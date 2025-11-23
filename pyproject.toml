@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitvisioncli"
-version = "1.0.0"
+version = "1.1.0"
 description = "AI-powered terminal IDE with dual-panel interface, multi-model support, and live editing capabilities"
 authors = [
     { name = "Nikan Eidi", email = "nikaneydi1984@gmail.com" }

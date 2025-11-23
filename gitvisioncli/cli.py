@@ -1440,7 +1440,7 @@ Examples:
     parser.add_argument(
         "--version",
         action="version",
-        version="gitvision 1.0.0"
+        version="gitvision 1.1.0"
     )
     parser.add_argument(
         "--fast",
