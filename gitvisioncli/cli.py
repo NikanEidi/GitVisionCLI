@@ -892,13 +892,15 @@ Output the raw {file_type_desc} content now:"""
                     response_text = ""
                     try:
                         # Stream AI response character-by-character to editor
+                        char_count = 0
                         async for ch in engine.stream(live_edit_prompt):
                             chunks.append(ch)
+                            char_count += len(ch) if ch else 0
                             # Stream character-by-character to editor in real-time
                             if right_panel.editor_panel and hasattr(right_panel.editor_panel, 'write_stream'):
                                 right_panel.editor_panel.write_stream(ch)
                             # Render UI frequently for smooth streaming effect (every few chars)
-                            if len(chunks) % 10 == 0:  # Render every 10 chars for performance
+                            if char_count % 10 == 0:  # Render every 10 chars for performance
                                 _render_ui(renderer, conversation, engine)
                         
                         # Finish streaming
