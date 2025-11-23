@@ -464,7 +464,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 # Fork and clone
-git clone https://github.com/YOUR_USERNAME/GitVisionCLI
+git clone https://github.com/NikanEidi/GitVisionCLI
 cd GitVisionCLI
 
 # Create branch
