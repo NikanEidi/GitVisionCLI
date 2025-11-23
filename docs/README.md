@@ -1,38 +1,438 @@
-# 📚 Documentation Index
+<div align="center">
 
-**Your guide to GitVisionCLI documentation.**
+```
+    ██████╗ ██╗████████╗██╗   ██╗██╗███████╗██╗ ██████╗ ███╗   ██╗
+   ██╔════╝ ██║╚══██╔══╝██║   ██║██║██╔════╝██║██╔═══██╗████╗  ██║
+   ██║  ███╗██║   ██║   ██║   ██║██║███████╗██║██║   ██║██╔██╗ ██║
+   ██║   ██║██║   ██║   ╚██╗ ██╔╝██║╚════██║██║██║   ██║██║╚██╗██║
+   ╚██████╔╝██║   ██║    ╚████╔╝ ██║███████║██║╚██████╔╝██║ ╚████║
+    ╚═════╝ ╚═╝   ╚═╝     ╚═══╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+```
+
+# **GitVisionCLI**
+
+### 🚀 **AI-Powered Terminal IDE with Git Superpowers** 🚀
+
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Terminal](https://img.shields.io/badge/terminal-native-green.svg)](https://github.com)
+
+**The Most Advanced Terminal IDE You'll Ever Use**
+
+[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Commands](#-commands)
 
 ---
 
-## 🚀 **Getting Started**
+</div>
+
+## 🎯 **What is GitVisionCLI?**
+
+GitVisionCLI is a **revolutionary terminal IDE** that combines the power of **AI, Git, and an intuitive dual-panel interface** to transform how you code.
+
+<div align="center">
+
+### ✨ **Why GitVisionCLI?** ✨
+
+| Feature | GitVisionCLI | Traditional CLI |
+|---------|--------------|-----------------|
+| **AI Integration** | ✅ Built-in | ❌ Third-party tools |
+| **Natural Language** | ✅ `remove line 5` | ❌ Manual editing |
+| **Git Workflow** | ✅ Seamless | ⚠️ Context switching |
+| **GitHub Sync** | ✅ Direct | ❌ Manual browser |
+| **Dual Panels** | ✅ AI + Workspace | ❌ Single view |
+| **Multi-Model AI** | ✅ Any LLM | ❌ Locked-in |
+| **Terminal Native** | ✅ Fast & Clean | ⚠️ GUI bloat |
+
+</div>
+
+---
+
+## 🌟 **Features**
+
+### 🤖 **AI-Powered Editing**
+- **Natural language commands**: `remove line 5`, `add comment at top`, `edit line 3 with new code`
+- **Zero clarification loops**: Instant execution when file is open
+- **Multi-model support**: OpenAI, Claude, Gemini, Ollama
+- **Context-aware**: Understands your code structure
+
+### 📝 **Smart File Operations**
+```bash
+create a file called app.py with print("Hello!")  # Single line
+:ml                                                # Multiline mode
+create a file called main.py with
+def main():
+    print("GitVision")
+:end                                               # Execute
+```
+
+### 🌳 **Integrated Git Workflow**
+```bash
+git init
+git add .
+git commit "Initial commit"
+:git-graph          # Visual commit tree
+git push
+```
+
+### 🐙 **Direct GitHub Integration**
+```bash
+create github repo my-project --private
+git push -u origin main
+create github issue "Bug fix needed"
+create github pr "New feature"
+```
+
+### 🎨 **Beautiful Dual-Panel UI**
+
+```
+┌─────────────────────────────────┬──────────────────────────────────┐
+│         AI CONSOLE              │      WORKSPACE PANEL             │
+├─────────────────────────────────┼──────────────────────────────────┤
+│  💬 Chat with AI                │  📁 File Tree Browser             
+│  🔧 Tool execution logs         │  ✏️  Code Editor (line numbers)   │
+│  📊 Status updates               │  📊 Git Graph Visualization       │
+│  🎨 Neon-themed interface        │  📄 Markdown Renderer             │
+│  ⚡ Real-time streaming          │  📚 Command Reference              
+└─────────────────────────────────┴──────────────────────────────────┘
+```
+
+### ⚡ **Lightning-Fast Line Editing**
+
+| Command | What It Does | Example |
+|---------|--------------|---------|
+| `remove line N` | Delete line | `remove line 5` |
+| `add line N with X` | Insert before line | `add line 1 with # comment` |
+| `edit line N with X` | Replace line | `edit line 3 with x = 100` |
+| `delete lines N-M` | Remove range | `delete lines 5-10` |
+| `replace line N with X` | Same as edit | `replace line 2 with new code` |
+
+### 🔥 **Key Highlights**
+
+- 🚫 **No "Please specify file..."** - Direct execution when context is clear
+- 🎨 **Clean UI** - No duplicate panels, smooth rendering
+- 📦 **Complete Git** - Init, branch, merge, push, pull, graph
+- 🌐 **GitHub Native** - Create repos, issues, PRs from terminal
+- 🔄 **Multi-Model** - Switch between AI providers instantly
+- 📚 **Smart Panels** - `:banner`, `:tree`, `:sheet`, `:git-graph`, `:edit`
+
+---
+
+## 🚀 **Installation**
+
+### **Prerequisites**
+
+<table>
+<tr>
+<td>
+
+**Required**
+- Python 3.9+
+- Git
+- Terminal (iTerm2, Alacritty, or default)
+
+</td>
+<td>
+
+**AI Provider** (pick one or more)
+- OpenAI API key
+- Claude API key
+- Gemini API key
+- Ollama (local, free)
+
+</td>
+</tr>
+</table>
+
+### **Install with pipx** (Recommended)
+
+```bash
+# Install pipx if needed
+python3 -m pip install pipx
+python3 -m pipx ensurepath
+
+# Install GitVisionCLI
+cd /path/to/GitVisionCLI
+pipx install -e .
+```
+
+### **Or with pip**
+
+```bash
+pip install -e .
+```
+
+### **Set API Keys**
+
+```bash
+# Choose your AI provider
+export OPENAI_API_KEY="sk-..."              # For GPT-4
+export ANTHROPIC_API_KEY="sk-ant-..."       # For Claude
+export GOOGLE_API_KEY="..."                 # For Gemini
+
+# Optional: GitHub integration
+export GITHUB_TOKEN="ghp_..."
+```
+
+### **Launch** 🎉
+
+```bash
+gitvision
+```
+
+---
+
+## ⚡ **Quick Start**
+
+### **1. Create Your First Project**
+
+```bash
+# Launch GitVision
+gitvision
+
+# Initialize Git
+git init
+
+# Create a file (multiline)
+:ml
+create a file called app.py with
+#!/usr/bin/env python3
+
+def greet(name):
+    """Greet someone by name."""
+    return f"Hello, {name}!"
+
+def main():
+    user = "World"
+    message = greet(user)
+    print(message)
+
+if __name__ == "__main__":
+    main()
+:end
+```
+
+### **2. Edit with Natural Language**
+
+```bash
+# Open in editor
+:edit app.py
+
+# Make changes with natural language
+add line 1 with # -*- coding: utf-8 -*-
+edit line 10 with     user = input("Your name: ")
+remove line 15
+```
+
+### **3. Git Workflow**
+
+```bash
+# Stage and commit
+git add .
+git commit "Initial commit with greeting app"
+
+# View history
+:git-graph
+
+# Create GitHub repo and push
+create github repo greeting-app --private
+git push -u origin main
+```
+
+### **4. Explore Panels**
+
+```bash
+:banner         # Quick commands
+:sheet          # Full command reference
+:tree           # File browser
+:git-graph      # Commit visualization
+```
+
+---
+
+## 📚 **Documentation**
+
+<div align="center">
+
+| Document | Description |
+|----------|-------------|
+| **[QUICKSTART.md](docs/QUICKSTART.md)** | 5-minute getting started guide |
+| **[COMMANDS.md](docs/COMMANDS.md)** | Complete command reference with examples |
+| **[FEATURES.md](docs/FEATURES.md)** | In-depth feature documentation |
+| **[TESTING_GUIDE.md](TESTING_GUIDE.md)** | Comprehensive testing walkthrough |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute to GitVisionCLI |
+
+</div>
+
+---
+
+## 🎮 **Commands**
+
+### **Essential Commands**
+
+```bash
+gitvision                          # Launch GitVisionCLI
+:banner                            # Show quick reference
+:sheet                             # Full command list
+:tree                              # File browser
+:edit <file>                       # Open file in editor
+:git-graph                         # Visual commit history
+exit / quit                        # Exit GitVision
+```
+
+### **File Operations**
+
+```bash
+create a file called <name> with <content>
+read file <name>
+delete file <name>
+rename <old> to <new>
+```
+
+### **Line Editing** (when file is open in `:edit`)
+
+```bash
+remove line <N>                    # Delete line N
+add line <N> with <text>           # Insert before line N
+edit line <N> with <text>          # Replace line N
+delete lines <N>-<M>               # Delete range
+```
+
+### **Git Commands**
+
+```bash
+git init
+git add <file>
+git add .
+git commit "<message>"
+git branch <name>
+git checkout <name>
+git merge <name>
+git push
+git pull
+git log
+git status
+```
+
+### **GitHub Integration**
+
+```bash
+create github repo <name> --private
+create github repo <name> --public
+create github issue "<title>" --body "<text>"
+create github pr "<title>" --head <branch> --base main
+```
+
+### **AI Commands**
+
+```bash
+explain the file <name>
+analyze this code
+find bugs in this file
+create a test file for <name>
+refactor this function
+```
+
+### **Panel Navigation**
+
+```bash
+:banner                            # Quick command list
+:sheet                             # Full command sheet
+:tree                              # File browser
+:git-graph                         # Commit graph
+:edit <filename>                   # Code editor
+```
+
+---
+
+## 🏗️ **Architecture**
+
+<div align="center">
+
+```mermaid
+graph TB
+    A[User Input] --> B[Chat Engine]
+    B --> C[Natural Language Mapper]
+    C --> D[Action Intent]
+    D --> E[Supervisor]
+    E --> F1[Editing Engine]
+    E --> F2[Git Engine]
+    E --> F3[GitHub Engine]
+    E --> F4[File System]
+    F1 --> G[Transaction Manager]
+    F2 --> G
+    F3 --> G
+    F4 --> G
+    G --> H[Dual Panel Renderer]
+    H --> I[Terminal Output]
+```
+
+</div>
+
+### **Core Components**
+
+| Component | Purpose |
+|-----------|---------|
+| **Chat Engine** | Multi-provider AI integration (OpenAI, Claude, Gemini) |
+| **Natural Language Mapper** | Converts natural language → structured actions |
+| **Editing Engine** | Transactional file operations with rollback |
+| **Supervisor** | Orchestrates all operations |
+| **Git Engine** | Native Git workflow integration |
+| **Dual Panel Renderer** | Beautiful ANSI-based UI |
+
+---
+
+## 🎯 **Use Cases**
 
 <table>
 <tr>
 <td width="50%">
 
-### **📖 [README.md](../README.md)**
-**Start here!**
-
-- What is GitVisionCLI?
-- Features overview
-- Installation guide
-- Quick start example
-- Architecture diagram
-
-**Time:** 5 minutes
+### **Solo Development**
+```bash
+gitvision
+git init
+# Create and edit files
+git add .
+git commit "Feature complete"
+git push
+```
 
 </td>
 <td width="50%">
 
-### **⚡ [QUICKSTART.md](QUICKSTART.md)**
-**5-minute tutorial**
+### **Code Review**
+```bash
+:edit app.py
+analyze this code
+find bugs
+suggest improvements
+refactor this function
+```
 
-- Step-by-step setup
-- Your first commands
-- Core concepts
-- Common workflows
+</td>
+</tr>
+<tr>
+<td>
 
-**Time:** 5 minutes
+### **Quick Prototyping**
+```bash
+create a flask app with auth
+add database models
+create API endpoints
+test the endpoints
+```
+
+</td>
+<td>
+
+### **Learning**
+```bash
+explain how this works
+what are design patterns here?
+how can I optimize this?
+show me best practices
+```
 
 </td>
 </tr>
@@ -40,228 +440,75 @@
 
 ---
 
-## 📚 **Reference Documentation**
+## 🔥 **What Makes It Special**
 
-<table>
-<tr>
-<td width="50%">
+<div align="center">
 
-### **📋 [COMMANDS.md](COMMANDS.md)**
-**Complete command reference**
+### **Terminal-First Philosophy**
 
-- All file operations
-- Line editing patterns
-- Git commands
-- GitHub integration
-- AI commands
-- Panel navigation
+| Benefit | Description |
+|---------|-------------|
+| ⚡ **Fast** | No browser overhead, instant responses |
+| 🎨 **Clean** | Minimal UI, maximum productivity |
+| 🔐 **Secure** | Local-first, API keys stay in ENV |
+| 🛠️ **Powerful** | Full Git + AI + IDE in one tool |
+| 🌈 **Beautiful** | Neon cyberpunk aesthetics |
 
-**Purpose:** Look up specific commands
-
-</td>
-<td width="50%">
-
-### **🌟 [FEATURES.md](FEATURES.md)**
-**Deep feature dive**
-
-- AI-powered editing details
-- Git integration features
-- UI panel descriptions
-- Advanced capabilities
-- Use case matrix
-
-**Purpose:** Understand what's possible
-
-</td>
-</tr>
-</table>
-
----
-
-## 🧪 **Testing & Practice**
-
-<table>
-<tr>
-<td width="50%">
-
-### **📝 [TESTING_GUIDE.md](../TESTING_GUIDE.md)**
-**Comprehensive test suite**
-
-- 9-part testing walkthrough
-- File operations tests
-- Line editing tests
-- Git workflow tests
-- GitHub integration tests
-- Complete workflow examples
-
-**Time:** 30-60 minutes
-
-</td>
-<td width="50%">
-
-### **📄 [CHEAT_SHEET.md](../CHEAT_SHEET.md)**
-**Quick reference**
-
-- Essential commands
-- Common patterns
-- Pro tips
-- Troubleshooting
-- Workflow templates
-
-**Purpose:** Quick lookup while coding
-
-</td>
-</tr>
-</table>
+</div>
 
 ---
 
 ## 🤝 **Contributing**
 
-<table>
-<tr>
-<td width="50%">
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### **🛠️ [CONTRIBUTING.md](../CONTRIBUTING.md)**
-**Contribution guidelines**
+```bash
+# Fork and clone
+git clone https://github.com/NikanEidi/GitVisionCLI
+cd GitVisionCLI
 
-- Code of conduct
-- Development setup
-- Pull request process
-- Coding standards
-- Testing guidelines
+# Create branch
+git checkout -b feature-amazing
 
-**For:** Contributors & developers
+# Make changes
+# ...
 
-</td>
-<td width="50%">
+# Test
+pytest tests/
 
-### **📝 [CHANGELOG.md](../CHANGELOG.md)**
-**Version history**
-
-- Release notes
-- Feature additions
-- Bug fixes
-- Improvements
-
-**For:** Tracking changes
-
-</td>
-</tr>
-</table>
-
----
-
-## 🎯 **Documentation Map**
-
-```
-GitVisionCLI/
-│
-├── README.md ⭐                 # Start here!
-│
-├── docs/                       # Detailed guides
-│   ├── QUICKSTART.md          # 5-minute tutorial
-│   ├── COMMANDS.md            # Command reference
-│   ├── FEATURES.md            # Feature details
-│   └── README.md              # This file
-│
-├── TESTING_GUIDE.md           # Full testing suite
-├── CHEAT_SHEET.md             # Quick reference
-├── CONTRIBUTING.md            # For contributors
-└── CHANGELOG.md               # Version history
+# Commit and push
+git add .
+git commit "Add amazing feature"
+git push origin feature-amazing
 ```
 
 ---
 
-## 🎓 **Learning Path**
+## 📜 **License**
 
-### **For New Users:**
-
-1. **[README.md](../README.md)** → Understand what GitVisionCLI is
-2. **[QUICKSTART.md](QUICKSTART.md)** → Get up and running
-3. **[CHEAT_SHEET.md](../CHEAT_SHEET.md)** → Keep as reference
-4. **[TESTING_GUIDE.md](../TESTING_GUIDE.md)** → Practice everything
-
-### **For Advanced Users:**
-
-1. **[FEATURES.md](FEATURES.md)** → Explore advanced capabilities
-2. **[COMMANDS.md](COMMANDS.md)** → Master all commands
-3. **[CONTRIBUTING.md](../CONTRIBUTING.md)** → Contribute back
-
-### **For Contributors:**
-
-1. **[CONTRIBUTING.md](../CONTRIBUTING.md)** → Setup & guidelines
-2. **[CHANGELOG.md](../CHANGELOG.md)** → Recent changes
-3. **Source code** → Dive in!
+MIT License - See [LICENSE](LICENSE)
 
 ---
 
-## 📖 **By Topic**
+## 🌟 **Show Your Support**
 
-### **Installation & Setup**
-- [README.md → Installation](../README.md#-installation)
-- [QUICKSTART.md → Installation](QUICKSTART.md#-installation)
-
-### **File Operations**
-- [COMMANDS.md → File Operations](COMMANDS.md#-file-operations)
-- [FEATURES.md → File Operations](FEATURES.md#-file-operations)
-- [CHEAT_SHEET.md → File Operations](../CHEAT_SHEET.md#-file-operations)
-
-### **Line Editing**
-- [COMMANDS.md → Line Editing](COMMANDS.md#-line-editing)
-- [FEATURES.md → Line Editing Patterns](FEATURES.md#line-editing-patterns)
-- [CHEAT_SHEET.md → Line Editing](../CHEAT_SHEET.md#-line-editing)
-- [TESTING_GUIDE.md → Line Editing Tests](../TESTING_GUIDE.md#-part-2-line-editing-core-features)
-
-### **Git Workflow**
-- [COMMANDS.md → Git Commands](COMMANDS.md#-git-commands)
-- [FEATURES.md → Git Integration](FEATURES.md#-git-integration)
-- [TESTING_GUIDE.md → Git Tests](../TESTING_GUIDE.md#-part-3-git-operations)
-
-### **GitHub Integration**
-- [COMMANDS.md → GitHub](COMMANDS.md#-github-integration)
-- [FEATURES.md → GitHub Features](FEATURES.md#-github-features)
-- [TESTING_GUIDE.md → GitHub Tests](../TESTING_GUIDE.md#-part-4-github-integration)
-
-### **AI Features**
-- [COMMANDS.md → AI Commands](COMMANDS.md#-ai-commands)
-- [FEATURES.md → AI-Powered Editing](FEATURES.md#-ai-powered-editing)
-- [CHEAT_SHEET.md → AI Commands](../CHEAT_SHEET.md#-ai-commands)
-
-### **UI & Panels**
-- [README.md → Architecture](../README.md#-architecture)
-- [FEATURES.md → UI & Panels](FEATURES.md#-ui--panels)
-- [COMMANDS.md → Panel Navigation](COMMANDS.md#-panel-navigation)
-
----
-
-## 🔍 **Quick Links**
-
-| I want to... | Go to |
-|--------------|-------|
-| Install GitVision | [README.md → Installation](../README.md#-installation) |
-| Learn basics in 5 min | [QUICKSTART.md](QUICKSTART.md) |
-| Look up a command | [COMMANDS.md](COMMANDS.md) or [CHEAT_SHEET.md](../CHEAT_SHEET.md) |
-| Test all features | [TESTING_GUIDE.md](../TESTING_GUIDE.md) |
-| Understand a feature | [FEATURES.md](FEATURES.md) |
-| Contribute code | [CONTRIBUTING.md](../CONTRIBUTING.md) |
-| See what's new | [CHANGELOG.md](../CHANGELOG.md) |
-
----
-
-## ❓ **Need Help?**
-
-1. **Check** [CHEAT_SHEET.md](../CHEAT_SHEET.md) for quick answers
-2. **Search** in [COMMANDS.md](COMMANDS.md) for specific commands
-3. **Read** [FEATURES.md](FEATURES.md) for deep understanding
-4. **Open an issue** on GitHub
+If you find GitVisionCLI useful, please ⭐ star the repo!
 
 ---
 
 <div align="center">
 
-**Happy coding with GitVisionCLI!** 🚀
+### **Built with ❤️ for developers who live in the terminal**
 
-[Back to README](../README.md)
+[![Made with Python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![Terminal Rules](https://img.shields.io/badge/Terminal-Rules-green.svg)](https://github.com)
+
+**[Documentation](docs/) • [Report Bug](https://github.com/NikanEidi/GitVisionCLI/issues) • [Request Feature](https://github.com/NikanEidi/GitVisionCLI/issues)**
+
+---
+
+```
+© 2024 GitVisionCLI • Where AI Meets Terminal Excellence
+```
 
 </div>
