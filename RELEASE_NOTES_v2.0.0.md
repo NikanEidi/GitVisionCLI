@@ -131,7 +131,7 @@ Thank you for using GitVisionCLI! This release includes comprehensive fixes base
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/NikanEidi/gitvisioncli
+- **GitHub**: https://github.com/NikanEidi/GitVisionCLI
 - **Documentation**: See `docs/` folder
 - **Issues**: Report bugs on GitHub Issues
 
