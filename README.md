@@ -17,7 +17,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Terminal](https://img.shields.io/badge/terminal-native-green.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/version-2.0.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
 
 **The Most Advanced Terminal IDE You'll Ever Use**
 
@@ -714,10 +714,10 @@ If you find GitVisionCLI useful, please ⭐ **star the repo**!
 ---
 
 ```
-© 2024 GitVisionCLI • Where AI Meets Terminal Excellence
+© 2025 GitVisionCLI • Where AI Meets Terminal Excellence
 ```
 
-**Version**: 1.1.0  
-**Last Updated**: 2024-12-XX
+**Version**: 2.0.0  
+**Last Updated**: 2025-11-24
 
 </div>

@@ -5,7 +5,7 @@
 <div align="center">
 
 [![Features](https://img.shields.io/badge/Features-50%2B-blue.svg)](https://github.com/NikanEidi/GitVisionCLI)
-[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-2.0.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
 
 </div>
 
@@ -710,5 +710,5 @@ Planned features:
 
 **Explore more: [COMMANDS.md](COMMANDS.md) | [QUICKSTART.md](QUICKSTART.md)**
 
-**Version**: 1.1.0  
+**Version**: 2.0.0  
 **Last Updated**: 2024-12-XX

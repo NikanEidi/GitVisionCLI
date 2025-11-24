@@ -5,7 +5,7 @@
 <div align="center">
 
 [![Testing](https://img.shields.io/badge/Testing-Comprehensive-blue.svg)](https://github.com/NikanEidi/GitVisionCLI)
-[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-2.0.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
 
 </div>
 
@@ -608,21 +608,21 @@ echo -e "\033[38;5;165mTest\033[0m"
 ### **Issue: Editor panel shows "Render error"**
 
 ```bash
-# Solution: This was fixed in v1.1.0. Update to latest version:
+# Solution: This was fixed in v2.0.0. Update to latest version:
 pip install --upgrade -e .
 ```
 
 ### **Issue: Panels stacking/not clearing**
 
 ```bash
-# Solution: This was fixed in v1.1.0. Update to latest version:
+# Solution: This was fixed in v2.0.0. Update to latest version:
 pip install --upgrade -e .
 ```
 
 ### **Issue: Error messages in conversation history**
 
 ```bash
-# Solution: This was fixed in v1.1.0. Update to latest version:
+# Solution: This was fixed in v2.0.0. Update to latest version:
 pip install --upgrade -e .
 ```
 
@@ -778,5 +778,5 @@ Once all tests pass, your GitVisionCLI is **PRODUCTION READY**! 🚀
 
 ---
 
-**Version**: 1.1.0  
+**Version**: 2.0.0  
 **Last Updated**: 2024-12-XX

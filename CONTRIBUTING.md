@@ -5,7 +5,7 @@
 <div align="center">
 
 [![Contributing](https://img.shields.io/badge/Contributions-Welcome-green.svg)](https://github.com/NikanEidi/GitVisionCLI)
-[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-2.0.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
 
 </div>
 
@@ -65,7 +65,7 @@ What actually happens
 - OS: macOS/Windows/Linux
 - Python: 3.9+
 - Terminal: iTerm2/Alacritty/etc.
-- GitVisionCLI version: 1.1.0
+- GitVisionCLI version: 2.0.0
 
 ## Screenshots
 If applicable
@@ -523,5 +523,5 @@ Contributors will be:
 
 ---
 
-**Version**: 1.1.0  
+**Version**: 2.0.0  
 **Last Updated**: 2024-12-XX

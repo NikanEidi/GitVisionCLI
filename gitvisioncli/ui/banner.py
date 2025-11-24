@@ -64,7 +64,7 @@ SNAKE_DIAGONAL = ['╱', '╲', '╳']
 
 # Application metadata
 TAGLINE = "» AUTONOMOUS CODE VISION SYSTEM «"
-VERSION = "v1.1.0"
+VERSION = "v2.0.0"
 SUBTITLE = "⚡ NEON CYBER SERPENT EDITION ⚡"
 
 # Layout thresholds

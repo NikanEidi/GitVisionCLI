@@ -5,7 +5,7 @@
 <div align="center">
 
 [![Commands](https://img.shields.io/badge/Commands-100%2B-blue.svg)](https://github.com/NikanEidi/GitVisionCLI)
-[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-2.0.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
 
 </div>
 
@@ -1117,5 +1117,5 @@ fix this error
 
 ---
 
-**Version**: 1.1.0  
+**Version**: 2.0.0  
 **Last Updated**: 2024-12-XX

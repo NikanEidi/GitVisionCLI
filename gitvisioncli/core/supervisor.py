@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional, List, Tuple, TYPE_CHECKING, Set
 from datetime import datetime
 from gitvisioncli.core.safe_patch_engine import SafePatchEngine
 from gitvisioncli.core.editing_engine import EditingEngine, EditingError
+from gitvisioncli.utils.ansi_utils import strip_ansi
 
 from .github_client import GitHubClient, GitHubClientConfig, GitHubError
 
@@ -740,19 +741,6 @@ class ActionSupervisor:
         Normalize content from various possible keys.
         Strips ANSI escape codes to prevent them from being written to files.
         """
-        import re
-        # Comprehensive ANSI escape code pattern:
-        # - \x1b[ or \033[ (ESC sequence start) followed by digits/semicolons and command char
-        # - Also handle partial/corrupted sequences like 38;5;46m (missing ESC and bracket prefix)
-        ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
-        # Pattern for corrupted ANSI sequences (missing ESC prefix)
-        # Matches and removes:
-        # - [number;m (bracket is part of corruption, remove entirely)
-        # - standalone number;m (remove entirely)
-        # Note: We don't match (number;m because ( might be valid syntax (e.g., function calls)
-        # The standalone number;m pattern will catch cases like print(38;5;46m"text")
-        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|[0-9;]+m")
-        
         content = (
             params.get("content")
             or params.get("text")
@@ -761,11 +749,9 @@ class ActionSupervisor:
             or ""
         )
         
-        # Strip ANSI escape codes from content before writing to files
-        # First remove full ANSI sequences
-        content = ansi_re.sub("", content)
-        # Then remove any corrupted/partial ANSI sequences entirely (including leading brackets/parentheses)
-        content = corrupted_ansi_re.sub("", content)
+        # CRITICAL: Strip ANSI escape codes from content before writing to files
+        # Use shared utility for consistent ANSI stripping across all modules
+        content = strip_ansi(content)
         return content
 
     def _write_safe(self, path: Path, content: str) -> None:
@@ -773,9 +759,13 @@ class ActionSupervisor:
         Atomic write helper.
         Writes to a temp file then renames to ensure atomicity.
         Ensures parent directories exist.
+        CRITICAL: Strips ANSI codes before writing to prevent them from appearing in files.
         """
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # CRITICAL: Strip ANSI codes before writing
+            content = strip_ansi(content)
             
             # Create temp file in the same directory to ensure atomic rename
             temp_path = path.with_suffix(f"{path.suffix}.tmp")
@@ -785,6 +775,15 @@ class ActionSupervisor:
         except Exception as e:
             logger.error(f"Write failed for {path}: {e}")
             raise
+    
+    def _write_text_safe(self, path: Path, content: str, encoding: str = "utf-8") -> None:
+        """
+        Safe write_text wrapper that strips ANSI codes before writing.
+        Use this instead of direct path.write_text() to ensure ANSI codes are removed.
+        """
+        # CRITICAL: Strip ANSI codes before writing
+        content = strip_ansi(content)
+        path.write_text(content, encoding=encoding)
 
     # ------------------------------------------------------------------ #
     # Helper for path validation / backup

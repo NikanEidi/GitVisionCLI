@@ -116,6 +116,8 @@ class SafePatchEngine:
     def rewrite_file(self, file_path: Union[str, Path], content: str):
         path = self._validate_path(file_path)
         backup = self._create_backup(path)
+        # CRITICAL: Strip ANSI codes before writing to prevent them from appearing in files
+        content = strip_ansi(content)
         # Normalize newlines via EditingEngine for consistency
         normalized = self._engine._normalize_newlines(content)
         path.write_text(normalized, encoding="utf-8")
@@ -126,9 +128,13 @@ class SafePatchEngine:
         backup = self._create_backup(path)
 
         current = self._read_content(path) if path.exists() else ""
+        # CRITICAL: Strip ANSI codes from content before appending
+        content = strip_ansi(content)
         try:
             result = self._engine.insert_at_bottom(current, block=content)
-            path.write_text(result.content, encoding="utf-8")
+            # Also strip ANSI from the result content as a safety measure
+            result_content = strip_ansi(result.content)
+            path.write_text(result_content, encoding="utf-8")
         except EditingError as e:
             logger.error(f"Append failed for {path}: {e}")
             raise
@@ -145,13 +151,17 @@ class SafePatchEngine:
         content = self._read_content(path)
         backup = self._create_backup(path)
 
+        # CRITICAL: Strip ANSI codes from new_block before replacing
+        new_block = strip_ansi(new_block)
         try:
             result = self._engine.replace_by_exact_match(
                 content,
                 old=self._engine._normalize_newlines(old_block),
                 new=self._engine._normalize_newlines(new_block),
             )
-            path.write_text(result.content, encoding="utf-8")
+            # Also strip ANSI from result as safety measure
+            result_content = strip_ansi(result.content)
+            path.write_text(result_content, encoding="utf-8")
         except EditingError as e:
             raise ValueError(str(e)) from e
 
@@ -171,12 +181,16 @@ class SafePatchEngine:
 
         backup = self._create_backup(path)
 
+        # CRITICAL: Strip ANSI codes from block before inserting
+        block = strip_ansi(block)
         # Split around the match boundary and delegate to block insert
         prefix = content[: m.start()]
         suffix = content[m.start() :]
         combined = prefix + "\n" + block + ("\n" if not block.endswith("\n") else "") + suffix
         try:
             normalized = self._engine._normalize_newlines(combined)
+            # Also strip ANSI from combined result as safety measure
+            normalized = strip_ansi(normalized)
             path.write_text(normalized, encoding="utf-8")
         except Exception as e:
             logger.error(f"insert_block_before_match failed for {path}: {e}")
@@ -194,11 +208,15 @@ class SafePatchEngine:
 
         backup = self._create_backup(path)
 
+        # CRITICAL: Strip ANSI codes from block before inserting
+        block = strip_ansi(block)
         prefix = content[: m.end()]
         suffix = content[m.end() :]
         combined = prefix + ("\n" if not prefix.endswith("\n") else "") + block + ("\n" if not block.endswith("\n") else "") + suffix
         try:
             normalized = self._engine._normalize_newlines(combined)
+            # Also strip ANSI from combined result as safety measure
+            normalized = strip_ansi(normalized)
             path.write_text(normalized, encoding="utf-8")
         except Exception as e:
             logger.error(f"insert_block_after_match failed for {path}: {e}")

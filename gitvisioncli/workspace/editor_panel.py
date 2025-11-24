@@ -32,30 +32,8 @@ from gitvisioncli.ui.colors import (
 
 logger = logging.getLogger(__name__)
 
-# Comprehensive ANSI escape sequence patterns
-# Full ANSI sequences: \x1b[ or \033[ followed by digits/semicolons and command char
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
-# Corrupted ANSI sequences (missing ESC prefix)
-# Matches and removes:
-# - [number;m (bracket is part of corruption, remove entirely)
-# - standalone number;m (remove entirely)
-# Note: We don't match (number;m because ( might be valid syntax (e.g., function calls)
-# The standalone number;m pattern will catch cases like print(38;5;46m"text")
-CORRUPTED_ANSI_RE = re.compile(r"\[[0-9;]+m|[0-9;]+m")
-
-
-def _strip_ansi(text: str) -> str:
-    """Remove ANSI escape sequences from text, including partial/corrupted ones."""
-    # First remove full ANSI sequences
-    text = ANSI_RE.sub("", text)
-    # Then remove any corrupted/partial ANSI sequences entirely (including leading brackets/parentheses)
-    text = CORRUPTED_ANSI_RE.sub("", text)
-    return text
-
-
-def _visible_len(text: str) -> int:
-    """Get visible length of text ignoring ANSI codes."""
-    return len(_strip_ansi(text))
+# Import shared ANSI utilities
+from gitvisioncli.utils.ansi_utils import strip_ansi as _strip_ansi, visible_len as _visible_len
 
 
 def _truncate_ansi_aware(text: str, max_visible: int) -> str:
@@ -294,6 +272,7 @@ class EditorPanel(PanelComponent):
 
         NOTE:
         - If file_path is None, this method returns False.
+        CRITICAL: Strips ANSI codes before saving to prevent them from appearing in files.
         """
         if not self.file_path:
             logger.error("Save failed: No file_path is set.")
@@ -302,6 +281,8 @@ class EditorPanel(PanelComponent):
         try:
             text = "\n".join(self.content)
             text = self._normalize_newlines(text)
+            # CRITICAL: Strip ANSI codes before saving
+            text = _strip_ansi(text)
             self.file_path.write_text(text, encoding="utf-8")
             self._set_modified(False)
             logger.info(f"EditorPanel saved: {self.file_path}")

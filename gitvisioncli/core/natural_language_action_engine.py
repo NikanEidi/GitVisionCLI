@@ -99,8 +99,14 @@ class NaturalLanguageActionEngine:
             r"\b(remove|delete|rm|dl|erase|drop|clear)\s+lines?\s+(?P<start>\d+)\s+to\s+(?P<end>\d+)\b", re.IGNORECASE
         )
         # Replace line - support "replace", "update", "change", "edit", "modify", "set"
+        # Also support "edit X in line N with Y" format
         self._replace_line_re = re.compile(
             r"\b(replace|update|change|edit|modify|set)\s+line\s*(?P<line>\d+)\s+(?:with|to|by)\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+        )
+        # Support "edit X in line N with Y" format (e.g., "edit hi in line 1 with hello")
+        # Also support "in line one", "in line two", etc. (word numbers)
+        self._replace_line_in_format_re = re.compile(
+            r"\b(edit|change|update|replace|modify)\s+(?P<old_text>[^\s]+)\s+in\s+line\s*(?P<line>\d+)\s+(?:with|to|by)\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
         )
         # Replace lines - support "replace", "update", "change", "edit", "modify"
         self._replace_lines_re = re.compile(
@@ -444,6 +450,84 @@ class NaturalLanguageActionEngine:
         # Fix "lines3-7", "lines5~10" → "lines 3-7", "lines 5-10"
         text = re.sub(r"\blines(\d+)\s*[-~]\s*(\d+)\b", r"lines \1-\2", text, flags=re.IGNORECASE)
         
+        # Convert word numbers to digits (one, two, three, etc. → 1, 2, 3, etc.)
+        # Comprehensive list covering 0-100 and common patterns
+        word_to_num = {
+            # 0-19
+            "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
+            "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
+            "ten": "10", "eleven": "11", "twelve": "12", "thirteen": "13",
+            "fourteen": "14", "fifteen": "15", "sixteen": "16", "seventeen": "17",
+            "eighteen": "18", "nineteen": "19",
+            # 20-29
+            "twenty": "20", "twenty-one": "21", "twenty-two": "22", "twenty-three": "23",
+            "twenty-four": "24", "twenty-five": "25", "twenty-six": "26", "twenty-seven": "27",
+            "twenty-eight": "28", "twenty-nine": "29",
+            # 30-39
+            "thirty": "30", "thirty-one": "31", "thirty-two": "32", "thirty-three": "33",
+            "thirty-four": "34", "thirty-five": "35", "thirty-six": "36", "thirty-seven": "37",
+            "thirty-eight": "38", "thirty-nine": "39",
+            # 40-49
+            "forty": "40", "forty-one": "41", "forty-two": "42", "forty-three": "43",
+            "forty-four": "44", "forty-five": "45", "forty-six": "46", "forty-seven": "47",
+            "forty-eight": "48", "forty-nine": "49",
+            # 50-59
+            "fifty": "50", "fifty-one": "51", "fifty-two": "52", "fifty-three": "53",
+            "fifty-four": "54", "fifty-five": "55", "fifty-six": "56", "fifty-seven": "57",
+            "fifty-eight": "58", "fifty-nine": "59",
+            # 60-69
+            "sixty": "60", "sixty-one": "61", "sixty-two": "62", "sixty-three": "63",
+            "sixty-four": "64", "sixty-five": "65", "sixty-six": "66", "sixty-seven": "67",
+            "sixty-eight": "68", "sixty-nine": "69",
+            # 70-79
+            "seventy": "70", "seventy-one": "71", "seventy-two": "72", "seventy-three": "73",
+            "seventy-four": "74", "seventy-five": "75", "seventy-six": "76", "seventy-seven": "77",
+            "seventy-eight": "78", "seventy-nine": "79",
+            # 80-89
+            "eighty": "80", "eighty-one": "81", "eighty-two": "82", "eighty-three": "83",
+            "eighty-four": "84", "eighty-five": "85", "eighty-six": "86", "eighty-seven": "87",
+            "eighty-eight": "88", "eighty-nine": "89",
+            # 90-99
+            "ninety": "90", "ninety-one": "91", "ninety-two": "92", "ninety-three": "93",
+            "ninety-four": "94", "ninety-five": "95", "ninety-six": "96", "ninety-seven": "97",
+            "ninety-eight": "98", "ninety-nine": "99",
+            # 100
+            "hundred": "100", "one-hundred": "100",
+            # Common variations (without hyphens)
+            "twenty one": "21", "twenty two": "22", "twenty three": "23", "twenty four": "24",
+            "twenty five": "25", "twenty six": "26", "twenty seven": "27", "twenty eight": "28",
+            "twenty nine": "29",
+            "thirty one": "31", "thirty two": "32", "thirty three": "33", "thirty four": "34",
+            "thirty five": "35", "thirty six": "36", "thirty seven": "37", "thirty eight": "38",
+            "thirty nine": "39",
+            "forty one": "41", "forty two": "42", "forty three": "43", "forty four": "44",
+            "forty five": "45", "forty six": "46", "forty seven": "47", "forty eight": "48",
+            "forty nine": "49",
+            "fifty one": "51", "fifty two": "52", "fifty three": "53", "fifty four": "54",
+            "fifty five": "55", "fifty six": "56", "fifty seven": "57", "fifty eight": "58",
+            "fifty nine": "59",
+            "sixty one": "61", "sixty two": "62", "sixty three": "63", "sixty four": "64",
+            "sixty five": "65", "sixty six": "66", "sixty seven": "67", "sixty eight": "68",
+            "sixty nine": "69",
+            "seventy one": "71", "seventy two": "72", "seventy three": "73", "seventy four": "74",
+            "seventy five": "75", "seventy six": "76", "seventy seven": "77", "seventy eight": "78",
+            "seventy nine": "79",
+            "eighty one": "81", "eighty two": "82", "eighty three": "83", "eighty four": "84",
+            "eighty five": "85", "eighty six": "86", "eighty seven": "87", "eighty eight": "88",
+            "eighty nine": "89",
+            "ninety one": "91", "ninety two": "92", "ninety three": "93", "ninety four": "94",
+            "ninety five": "95", "ninety six": "96", "ninety seven": "97", "ninety eight": "98",
+            "ninety nine": "99",
+            "one hundred": "100"
+        }
+        for word, num in word_to_num.items():
+            # Replace word numbers in "line one", "line two", etc.
+            text = re.sub(rf"\bline\s+{word}\b", f"line {num}", text, flags=re.IGNORECASE)
+            # Also handle "lines one", "lines two", etc.
+            text = re.sub(rf"\blines\s+{word}\b", f"lines {num}", text, flags=re.IGNORECASE)
+            # Handle "in line one", "in line two", etc. (for "edit X in line one with Y" format)
+            text = re.sub(rf"\bin\s+line\s+{word}\b", f"in line {num}", text, flags=re.IGNORECASE)
+        
         return text
     
     def extract_content(self, text: str, instruction: str) -> Optional[str]:
@@ -589,7 +673,26 @@ class NaturalLanguageActionEngine:
                     }
                 )
             
-            # Replace single line
+            # Replace single line - check "edit X in line N with Y" format first
+            match = self._replace_line_in_format_re.search(text)
+            if match:
+                line_num = int(match.group("line"))
+                content = match.group("text").strip()
+                # Only strip outer quotes if content doesn't contain newlines
+                if "\n" not in content:
+                    content = content.strip('"\'')
+                # Preserve multi-line content as-is
+                return ActionJSON(
+                    type="ReplaceBlock",
+                    params={
+                        "path": active_file.path,
+                        "start_line": line_num,
+                        "end_line": line_num,
+                        "text": content,
+                    }
+                )
+            
+            # Replace single line - standard format "edit line N with X"
             match = self._replace_line_re.search(text)
             if match:
                 line_num = int(match.group("line"))

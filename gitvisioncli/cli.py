@@ -881,8 +881,76 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                     _render_ui(renderer, conversation, engine)
                     continue
 
-            # --- 9. SEND TO AI (DEFAULT PATH) ---
-            # Check if we're in live edit mode
+            # --- 9. CHECK FOR LINE-BASED OPERATIONS (before live edit mode) ---
+            # CRITICAL FIX: Line-based operations should use action engine, not live edit mode
+            # This ensures "insert X in line 1", "add hello in line 1", etc. work correctly
+            # Check this when editor is open (either in live edit mode or normal editor mode)
+            if enable_workspace and right_panel and right_panel.editor_panel.file_path:
+                from gitvisioncli.core.natural_language_action_engine import (
+                    NaturalLanguageActionEngine,
+                    ActiveFileContext
+                )
+                
+                # Check if this is a line-based operation
+                editor_file_path = right_panel.editor_panel.file_path
+                file_content = right_panel.editor_panel.get_text()
+                
+                # CRITICAL FIX: Use executor's base_dir (which matches terminal.cwd) for path resolution
+                # The supervisor's _resolve_path uses terminal.cwd, so we need to use the same base
+                executor_base = engine.get_base_dir()
+                try:
+                    # Calculate relative path from executor's base_dir (matches terminal.cwd)
+                    rel_path = str(editor_file_path.relative_to(executor_base))
+                except ValueError:
+                    # If file is outside executor_base, try right_panel.base_dir as fallback
+                    try:
+                        rel_path = str(editor_file_path.relative_to(right_panel.base_dir))
+                    except ValueError:
+                        # If still outside, use just the filename (supervisor will resolve from cwd)
+                        rel_path = editor_file_path.name
+                
+                active_file_ctx = ActiveFileContext(
+                    path=rel_path,
+                    content=file_content
+                )
+                
+                # Try to convert to action - if it's a line-based operation, it will return an action
+                nl_engine = NaturalLanguageActionEngine()
+                line_action = nl_engine.convert_to_action(user_input, active_file=active_file_ctx)
+                
+                # If we got a line-based action, execute it via the action engine instead of live edit
+                if line_action and line_action.type in {
+                    "InsertBeforeLine", "InsertAfterLine", "DeleteLineRange", 
+                    "ReplaceBlock", "InsertAtTop", "InsertAtBottom",
+                    "InsertBlockAtLine", "AppendText", "PrependText", "ReplaceText"
+                }:
+                    # Execute the action via the executor
+                    conversation.add_user(user_input)
+                    processing_msg = f"{BOLD}{BRIGHT_MAGENTA}⚡ Processing line operation...{RESET}"
+                    _render_ui(renderer, conversation, engine, processing_msg)
+                    
+                    # Update workspace context
+                    engine.update_workspace_context(right_panel.get_workspace_context())
+                    
+                    # Execute the action
+                    action_dict = {
+                        "type": line_action.type,
+                        "params": line_action.params
+                    }
+                    result = engine.executor.run_action(action_dict)
+                    
+                    if result.status == ActionStatus.SUCCESS:
+                        conversation.add_system(result.message or f"✓ {line_action.type} completed")
+                        # Reload the file in editor to show changes
+                        right_panel.editor_panel.load_file(editor_file_path)
+                    else:
+                        conversation.add_error(result.error or f"Failed: {line_action.type}")
+                    
+                    _render_ui(renderer, conversation, engine)
+                    continue
+
+            # --- 10. SEND TO AI (DEFAULT PATH) ---
+            # Check if we're in live edit mode (only for non-line-based operations)
             if live_edit_file and enable_workspace and right_panel:
                 # Live edit mode: stream directly to editor
                 # CRITICAL FIX: Compare paths properly - live_edit_file is a relative filename,
@@ -1773,7 +1841,7 @@ Examples:
     parser.add_argument(
         "--version",
         action="version",
-        version="gitvision 1.1.0"
+        version="gitvision 2.0.0"
     )
     parser.add_argument(
         "--fast",
