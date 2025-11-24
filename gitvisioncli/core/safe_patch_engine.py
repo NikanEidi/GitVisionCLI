@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Union, Optional, Dict, Any
 
 from gitvisioncli.core.editing_engine import EditingEngine, EditingError
+from gitvisioncli.utils.ansi_utils import strip_ansi
 
 logger = logging.getLogger(__name__)
 
