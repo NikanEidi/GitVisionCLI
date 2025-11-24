@@ -60,9 +60,9 @@ class ActionRouter:
                     return action
                 elif hasattr(action, 'type') and hasattr(action, 'params'):
                     # It's an ActionJSON object
-                action_dict = self.action_engine.to_dict(action)
-                logger.debug(f"Direct action conversion: {action_dict}")
-                return action_dict
+                    action_dict = self.action_engine.to_dict(action)
+                    logger.debug(f"Direct action conversion: {action_dict}")
+                    return action_dict
                 else:
                     logger.warning(f"Unexpected action type: {type(action)}")
                     return None

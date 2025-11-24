@@ -1258,14 +1258,13 @@ def run_interactive_chat(args):
     try:
         base_dir = Path.cwd()
     except PermissionError:
-        # Fall back to the user's home directory if the current working
-        # directory is not accessible (e.g., macOS sandboxed locations).
-        home = Path.home()
+        # Fall back to Desktop if the current working directory is not accessible
+        desktop = Path.home() / "Desktop"
         print(
             f"{RED}⚠️ Warning: Permission denied for current directory. "
-            f"Falling back to home: {home}{RESET}"
+            f"Falling back to Desktop: {desktop}{RESET}"
         )
-        base_dir = home
+        base_dir = desktop
 
     if not (Path(base_dir) / ".git").exists():
         print(f"{RED}⚠️ Warning: No git repository found in {base_dir}{RESET}")
@@ -1289,10 +1288,22 @@ def run_interactive_chat(args):
         return
 
     # 1. Resolve base directory using unified utility
+    # CRITICAL FIX: Handle PermissionError for os.getcwd() on macOS
+    try:
+        current_cwd = os.getcwd()
+    except PermissionError:
+        # Fall back to Desktop if current directory is not accessible
+        desktop = Path.home() / "Desktop"
+        current_cwd = str(desktop)
+        print(
+            f"{RED}⚠️ Warning: Permission denied for current directory. "
+            f"Using Desktop instead: {current_cwd}{RESET}"
+        )
+    
     base_dir = resolve_base_dir(
         cli_arg=args.dir,
         config_val=cfg.get("default_dir"),
-        cwd=os.getcwd()
+        cwd=current_cwd
     )
     
     # Ensure it exists
@@ -1685,7 +1696,8 @@ def cmd_interactive(args) -> int:
         try:
             banner_with_info(os.getcwd())
         except PermissionError:
-            banner_with_info(str(Path.home()))
+            desktop = Path.home() / "Desktop"
+            banner_with_info(str(desktop))
     
     if args.dir:
         try:

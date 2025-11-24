@@ -212,10 +212,11 @@ class NaturalLanguageActionEngine:
         self._git_log_re = re.compile(r"\bgit\s+log\b", re.IGNORECASE)
         # Git add - support "add files", "stage files", "add all", "stage all", "add everything"
         # Also support "stash", "add .", "stage .", "add all files", "stage everything"
-        # CRITICAL FIX: Put [^\s]+ before keyword patterns to prevent files like "all_files.txt"
-        # from matching just "all" instead of the full filename
+        # CRITICAL FIX: Match "." first, then keywords, then file paths
+        # Don't use \b after path because "." is not a word character
+        # CRITICAL: Match "all" and "everything" BEFORE file handlers can match them
         self._git_add_re = re.compile(
-            r"\b(?:git\s+)?(?:add|stage|stash)\s+(?P<path>[^\s]+|\.|all|everything|files?|changes?|staged?)\b", 
+            r"\b(?:git\s+)?(?:add|stage|stash)\s+(?P<path>\.|all|everything|files?|changes?|staged?|[^\s]+)(?:\s|$)", 
             re.IGNORECASE
         )
         # Git commit - support "commit changes", "commit with message", "save changes", "commit all"
@@ -234,6 +235,7 @@ class NaturalLanguageActionEngine:
             re.IGNORECASE
         )
         # Git branch - support "create branch", "new branch", "make branch", "branch"
+        # CRITICAL FIX: Must match "branch" keyword to avoid conflicts with file operations
         self._git_branch_re = re.compile(
             r"\b(?:git\s+)?(?:create\s+)?(?:new\s+)?(?:make\s+)?branch\s+(?P<name>[^\s]+)\b", re.IGNORECASE
         )
@@ -246,6 +248,7 @@ class NaturalLanguageActionEngine:
             r"\b(?:git\s+)?checkout\s+-b\s+(?P<branch>[^\s]+)\b", re.IGNORECASE
         )
         # Git merge - support "merge branch", "merge into", "combine branches"
+        # CRITICAL FIX: Check for "merge" keyword first to avoid conflicts with branch creation
         self._git_merge_re = re.compile(
             r"\b(?:git\s+)?(?:merge|combine)\s+(?:branch\s+)?(?:into\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
         )
@@ -346,8 +349,14 @@ class NaturalLanguageActionEngine:
         )
         # GitHub PR - support "create pr", "new pr", "make pr", "open pr", "create pull request"
         # Also support "file pr", "submit pr", "add pr"
+        # CRITICAL FIX: Match "pull request" without requiring "github" keyword
+        # Must check for "pr" or "pull request" keywords to avoid conflicts with file operations
         self._github_pr_re = re.compile(
             r"\b(?:create|new|make|open|add|file|submit)\s+(?:github\s+)?(?:pr|pull\s+request)\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
+        )
+        # Also support unquoted PR titles - CRITICAL: Must have "pr" or "pull request" keyword
+        self._github_pr_unquoted_re = re.compile(
+            r"\b(?:create|new|make|open|add|file|submit)\s+(?:github\s+)?(?:pr|pull\s+request)\s+(?P<title>[^\s]+)", re.IGNORECASE
         )
         
         # Change directory operations
@@ -916,7 +925,7 @@ class NaturalLanguageActionEngine:
         if self._git_log_re.search(text) or re.search(r"\b(?:show|view|see)\s+(?:git\s+)?(?:history|commits|log)\b", text, re.IGNORECASE):
             return ActionJSON(type="RunGitCommand", params={"command": "log"})
         
-        # Git add
+        # Git add - CRITICAL: Check this BEFORE file operations to avoid conflicts
         match = self._git_add_re.search(text)
         if match:
             path = match.group("path")
@@ -944,7 +953,17 @@ class NaturalLanguageActionEngine:
                 params={"message": "Update files"}
             )
         
-        # Git branch
+        # Git merge - CRITICAL: Check BEFORE branch creation to avoid conflicts
+        # "merge branch dev" should be GitMerge, not GitBranch
+        match = self._git_merge_re.search(text)
+        if match:
+            branch = match.group("branch")
+            return ActionJSON(
+                type="GitMerge",
+                params={"branch": branch}
+            )
+        
+        # Git branch - CRITICAL: Must come AFTER merge check
         match = self._git_branch_re.search(text)
         if match:
             name = match.group("name")
@@ -986,15 +1005,6 @@ class NaturalLanguageActionEngine:
                     return ActionJSON(
                         type="GitCheckout",
                         params={"branch": branch_name}
-                    )
-        
-        # Git merge
-        match = self._git_merge_re.search(text)
-        if match:
-            branch = match.group("branch")
-            return ActionJSON(
-                type="GitMerge",
-                params={"branch": branch}
             )
         
         # Git push
@@ -1025,18 +1035,20 @@ class NaturalLanguageActionEngine:
                 params=params
             )
         
-        # Git remote operations - check in order of specificity
+        # Git remote operations - CRITICAL: Check BEFORE file operations
         # Remote remove/rm (check before add to avoid false matches)
         match = self._git_remote_remove_re.search(text)
         if match:
             name = match.group("name")
-            return ActionJSON(
-                type="GitRemote",
-                params={
-                    "operation": "remove",
-                    "name": name
-                }
-            )
+            # CRITICAL: Match if "remote" keyword is present OR starts with "git" OR starts with "remove remote"
+            if "remote" in text.lower() or text.lower().startswith("git") or text.lower().startswith("remove remote"):
+                return ActionJSON(
+                    type="GitRemote",
+                    params={
+                        "operation": "remove",
+                        "name": name
+                    }
+                )
         
         # Remote rename
         match = self._git_remote_rename_re.search(text)
@@ -1070,43 +1082,48 @@ class NaturalLanguageActionEngine:
         # This must come before show to prevent "show remotes" from matching as show operation
         match = self._git_remote_list_re.search(text)
         if match:
-            return ActionJSON(
-                type="GitRemote",
-                params={
-                    "operation": "list"
-                }
-            )
+            # CRITICAL: Match if "remote" keyword is present OR starts with "git" OR is "list remotes"
+            if "remote" in text.lower() or text.lower().startswith("git") or "list remotes" in text.lower():
+                return ActionJSON(
+                    type="GitRemote",
+                    params={
+                        "operation": "list"
+                    }
+                )
         
         # Remote show (specific remote) - check AFTER list to avoid false positives
         # Pattern is more restrictive to exclude "remotes" and "all" as remote names
         match = self._git_remote_show_re.search(text)
         if match:
             name = match.group("name")
-            # Exclude common list keywords that might be captured as remote names
-            if name.lower() in ("remotes", "all"):
-                # This was likely meant to be a list operation, but we already checked that
-                # Return an error action instead of silently skipping
+            # CRITICAL: Match if "remote" keyword is present OR starts with "git" OR is "show remote"
+            if "remote" in text.lower() or text.lower().startswith("git") or "show remote" in text.lower():
+                # Exclude common list keywords that might be captured as remote names
+                if name.lower() in ("remotes", "all"):
+                    # This was likely meant to be a list operation, but we already checked that
+                    # Return an error action instead of silently skipping
+                    return ActionJSON(
+                        type="GitRemote",
+                        params={
+                            "operation": "show",
+                            "name": name,
+                            "error": f"'{name}' is not a valid remote name. Use 'list' to see all remotes."
+                        }
+                    )
                 return ActionJSON(
                     type="GitRemote",
                     params={
                         "operation": "show",
-                        "name": name,
-                        "error": f"'{name}' is not a valid remote name. Use 'list' to see all remotes."
+                        "name": name
                     }
                 )
-            return ActionJSON(
-                type="GitRemote",
-                params={
-                    "operation": "show",
-                    "name": name
-                }
-            )
         
         # Remote add (default operation) - try explicit pattern first
         match = self._git_remote_add_explicit_re.search(text)
         if match:
             name = match.group("name")
             url = match.group("url")
+            # CRITICAL: Always match explicit "git remote add" pattern
             return ActionJSON(
                 type="GitRemote",
                 params={
@@ -1121,14 +1138,16 @@ class NaturalLanguageActionEngine:
         if match:
             name = match.group("name")
             url = match.group("url")
-            return ActionJSON(
-                type="GitRemote",
-                params={
-                    "operation": "add",
-                    "name": name,
-                    "url": url
-                }
-            )
+            # CRITICAL: Match if "remote" keyword is present OR starts with "git" or "add remote"
+            if "remote" in text.lower() or text.lower().startswith("git") or text.lower().startswith("add remote"):
+                return ActionJSON(
+                    type="GitRemote",
+                    params={
+                        "operation": "add",
+                        "name": name,
+                        "url": url
+                    }
+                )
         
         # Git graph (UI command - handled by CLI/UI layer)
         # Note: This is a UI panel command, not a supervisor action
@@ -1259,8 +1278,8 @@ class NaturalLanguageActionEngine:
                 }
             )
         
-        # Create GitHub PR
-        match = self._github_pr_re.search(text)
+        # Create GitHub PR - CRITICAL: Check BEFORE file operations
+        match = self._github_pr_re.search(text) or self._github_pr_unquoted_re.search(text)
         if match:
             title = match.group("title")
             # Extract head/base if present

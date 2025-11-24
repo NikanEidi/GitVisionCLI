@@ -78,7 +78,7 @@ class CreateFileHandler(BaseHandler):
         """Check if this is a create file operation."""
         text_lower = text.lower()
         
-        # Don't match if it's clearly a GitHub command
+        # CRITICAL FIX: Don't match if it's clearly a GitHub or Git repo command
         if 'github' in text_lower:
             if 'repo' in text_lower or 'repository' in text_lower:
                 return 0.0
@@ -86,6 +86,14 @@ class CreateFileHandler(BaseHandler):
                 return 0.0
             if 'pr' in text_lower or 'pull request' in text_lower:
                 return 0.0
+        
+        # CRITICAL FIX: Don't match "create private repo" or "create public repo" - these are GitHub repos
+        if re.search(r'\b(?:create|make)\s+(?:private|public)\s+(?:repo|repository)\b', text_lower):
+            return 0.0  # Let GitHub handler take this
+        
+        # CRITICAL FIX: Don't match "create repo" without explicit file keywords
+        if re.search(r'^(?:create|make)\s+repo\b', text_lower) and 'file' not in text_lower:
+            return 0.0  # Likely a GitHub repo command
         
         if any(kw in text_lower for kw in ['create file', 'make file', 'new file', 'write file']):
             return 0.9

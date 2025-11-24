@@ -918,51 +918,51 @@ simple natural language commands may already be handled by the direct engine."""
                 direct_action = None
             
             if direct_action:
-            # Handle special UI commands (like ShowGitGraph) that don't go through executor
-            # These are handled by CLI layer before reaching here, but we check anyway
-            if direct_action.get("type") == "ShowGitGraph":
-                # CLI should have already handled this, but yield message if we get here
-                yield "Git graph command detected (should be handled by CLI).\n"
-                return
-            
-            # Handle compound actions (e.g., CreateFolderAndCD)
-            if direct_action.get("type") == "CreateFolderAndCD":
-                folder_path = direct_action.get("params", {}).get("path")
-                if folder_path:
-                    # First create the folder
-                    create_result = self.executor.run_action(
-                        {"type": "CreateFolder", "params": {"path": folder_path}},
-                        ActionContext()
-                    )
-                    if create_result.status == ActionStatus.SUCCESS:
-                        yield f"✓ {create_result.message}\n"
-                        # Then change directory to it
-                        cd_result = self.executor.run_action(
-                            {"type": "ChangeDirectory", "params": {"path": folder_path}},
+                # Handle special UI commands (like ShowGitGraph) that don't go through executor
+                # These are handled by CLI layer before reaching here, but we check anyway
+                if direct_action.get("type") == "ShowGitGraph":
+                    # CLI should have already handled this, but yield message if we get here
+                    yield "Git graph command detected (should be handled by CLI).\n"
+                    return
+                
+                # Handle compound actions (e.g., CreateFolderAndCD)
+                if direct_action.get("type") == "CreateFolderAndCD":
+                    folder_path = direct_action.get("params", {}).get("path")
+                    if folder_path:
+                        # First create the folder
+                        create_result = self.executor.run_action(
+                            {"type": "CreateFolder", "params": {"path": folder_path}},
                             ActionContext()
                         )
-                        if cd_result.status == ActionStatus.SUCCESS:
-                            yield f"✓ {cd_result.message}\n"
+                        if create_result.status == ActionStatus.SUCCESS:
+                            yield f"✓ {create_result.message}\n"
+                            # Then change directory to it
+                            cd_result = self.executor.run_action(
+                                {"type": "ChangeDirectory", "params": {"path": folder_path}},
+                                ActionContext()
+                            )
+                            if cd_result.status == ActionStatus.SUCCESS:
+                                yield f"✓ {cd_result.message}\n"
+                            else:
+                                yield f"✗ Failed to change directory: {cd_result.error}\n"
                         else:
-                            yield f"✗ Failed to change directory: {cd_result.error}\n"
-                    else:
-                        yield f"✗ {create_result.message}: {create_result.error}\n"
-                    return
-            
-            # Execute action directly, skip AI
-            logger.info(f"Direct action conversion: {direct_action['type']}")
-            result = self.executor.run_action(direct_action, ActionContext())
-            
-            # Sync documentation after action (executor already does this, but ensure it's called)
-            if result.modified_files:
-                modified_paths = [Path(f) for f in result.modified_files]
-                self._action_router.sync_after_action(
-                    direct_action.get("type", ""),
-                    modified_paths
-                )
-            
-            # Track last modified for UI sync
-            self._track_last_modified(direct_action, result)
+                            yield f"✗ {create_result.message}: {create_result.error}\n"
+                        return
+                
+                # Execute action directly, skip AI
+                logger.info(f"Direct action conversion: {direct_action['type']}")
+                result = self.executor.run_action(direct_action, ActionContext())
+                
+                # Sync documentation after action (executor already does this, but ensure it's called)
+                if result.modified_files:
+                    modified_paths = [Path(f) for f in result.modified_files]
+                    self._action_router.sync_after_action(
+                        direct_action.get("type", ""),
+                        modified_paths
+                    )
+                
+                # Track last modified for UI sync
+                self._track_last_modified(direct_action, result)
             
             # Yield result to chat (not to editor - editor will reload from disk)
             if result.status == ActionStatus.SUCCESS:

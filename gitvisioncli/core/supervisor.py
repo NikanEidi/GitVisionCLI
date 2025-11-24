@@ -2357,7 +2357,10 @@ class ActionSupervisor:
           from the repo root but skip embedded git repositories that have
           their own .git directories inside the sandbox.
         """
-        files = params.get("files", ["."])
+        # CRITICAL FIX: Handle both "files" and "path" parameters for git add
+        files = params.get("files") or params.get("path")
+        if files is None:
+            files = ["."]
         if isinstance(files, str):
             files = [files]
 
@@ -2508,7 +2511,7 @@ class ActionSupervisor:
         remote = params.get("remote", "origin")
         branch = params.get("branch") or repo_state.current_branch
         set_upstream = params.get("set_upstream", True)  # Default to True for new branches
-        
+
         # Ensure the remote exists before attempting to push.
         has_remote, _, _ = self._run_git_command(
             ["remote", "get-url", remote],
@@ -2543,9 +2546,9 @@ class ActionSupervisor:
             args_retry = ["push", "-u", remote, branch]
             success, stdout, stderr = self._run_git_command(
                 args_retry,
-                require_repo=True,
-                cwd=repo_state.root,
-            )
+            require_repo=True,
+            cwd=repo_state.root,
+        )
         if success:
             return ActionResult(
                 status=ActionStatus.SUCCESS,
@@ -2639,6 +2642,50 @@ class ActionSupervisor:
             )
 
         create_new = params.get("create_new", False)
+        
+        # CRITICAL FIX: Check if branch exists before trying to checkout
+        # If branch doesn't exist and create_new is False, check for similar branch names
+        if not create_new:
+            # List all branches
+            success_list, stdout_list, _ = self._run_git_command(["branch", "--list", "-a"])
+            if success_list:
+                branches = [
+                    b.strip().lstrip("* ").strip()
+                    for b in stdout_list.split("\n")
+                    if b.strip()
+                ]
+                # Remove "remotes/" prefix from remote branches for comparison
+                local_branches = [b for b in branches if not b.startswith("remotes/")]
+                remote_branches = [b.replace("remotes/", "").split("/", 1)[-1] for b in branches if b.startswith("remotes/")]
+                all_branch_names = set(local_branches + remote_branches)
+                
+                # Check if requested branch exists
+                if branch not in all_branch_names:
+                    # Check for common branch name alternatives (main/master)
+                    suggestions = []
+                    if branch == "main" and "master" in all_branch_names:
+                        suggestions.append("master")
+                    elif branch == "master" and "main" in all_branch_names:
+                        suggestions.append("main")
+                    
+                    # Build helpful error message
+                    error_msg = f"Branch '{branch}' does not exist."
+                    if suggestions:
+                        error_msg += f" Did you mean '{suggestions[0]}'? (Current branch: {self._get_git_repo_state().current_branch or 'unknown'})"
+                    else:
+                        available = ", ".join(sorted(local_branches)[:5])  # Show first 5 branches
+                        if len(local_branches) > 5:
+                            available += f" (and {len(local_branches) - 5} more)"
+                        error_msg += f" Available branches: {available}"
+                        error_msg += f" Use 'git checkout -b {branch}' to create it."
+                    
+                    return ActionResult(
+                        status=ActionStatus.FAILURE,
+                        message=f"Failed to checkout branch: {branch}",
+                        error=error_msg,
+                        data={"available_branches": local_branches, "suggestions": suggestions}
+                    )
+
         args = ["checkout"]
         if create_new:
             args.append("-b")
@@ -2652,10 +2699,30 @@ class ActionSupervisor:
                 message=f"Checked out branch: {branch}",
                 data={"branch": branch, "output": stdout},
             )
+        
+        # If checkout failed, provide better error message
+        error_msg = stderr
+        if "pathspec" in stderr.lower() and "did not match" in stderr.lower():
+            # Try to suggest alternatives
+            success_list, stdout_list, _ = self._run_git_command(["branch", "--list"])
+            if success_list:
+                branches = [
+                    b.strip().lstrip("* ").strip()
+                    for b in stdout_list.split("\n")
+                    if b.strip()
+                ]
+                if branches:
+                    available = ", ".join(branches[:5])
+                    error_msg = f"Branch '{branch}' does not exist. Available branches: {available}"
+                    if branch == "main" and "master" in branches:
+                        error_msg += f" (Did you mean 'master'?)"
+                    elif branch == "master" and "main" in branches:
+                        error_msg += f" (Did you mean 'main'?)"
+        
         return ActionResult(
             status=ActionStatus.FAILURE,
             message=f"Failed to checkout branch: {branch}",
-            error=stderr,
+            error=error_msg,
         )
 
     def _handle_git_merge(

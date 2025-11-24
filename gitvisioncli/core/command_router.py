@@ -95,7 +95,7 @@ class CommandRouter:
                 result.params.get(k) for k in ["content", "text", "block"] if result.params.get(k)
             ):
                 # Retry with full message for content extraction
-        result = self.manager.find_best_handler(user_message, context)
+                result = self.manager.find_best_handler(user_message, context)
         
         if result and result.success:
             return ActionJSON(

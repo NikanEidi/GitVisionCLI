@@ -46,6 +46,10 @@ class GitHubCreateRepoHandler(BaseHandler):
     
     def can_handle(self, text: str, context: Optional[Dict[str, Any]] = None) -> float:
         text_lower = text.lower()
+        # CRITICAL FIX: Match "create private repo" BEFORE CreateFileHandler matches it as a file
+        # Pattern: "create private repo" or "create private repository" (with or without name)
+        if re.search(r'\b(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?:private|public)\s+(?:github\s+)?(?:repo|repository)\b', text_lower):
+            return 0.98  # Very high priority to beat CreateFileHandler
         # Higher priority - check for "github repo" or "github repository" specifically
         if re.search(r'\b(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?:github\s+)?(?:repo|repository)\b', text_lower):
             return 0.95  # Higher than CreateFileHandler
@@ -78,15 +82,16 @@ class GitHubCreateRepoHandler(BaseHandler):
                 confidence=0.95
             )
         
-        # Pattern 1: "create private github repository call it demo" or "create github repo named demo private"
+        # Pattern 1a: "create private github repository call it demo" or "create private repo demo"
+        # CRITICAL FIX: Check for name FIRST (more specific pattern)
         # Supports: private/public before or after, "call it", "named", "called"
         match = re.search(
-            r'\b(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?P<private1>private|public)\s+(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name1>[^\s]+)\b',
+            r'\b(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?P<private1a>private|public)\s+(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name1a>[^\s]+)\b',
             text_lower
         )
         if match:
-            name = match.group("name1")
-            is_private = match.group("private1") == "private"
+            name = match.group("name1a")
+            is_private = match.group("private1a") == "private"
             return HandlerResult(
                 success=True,
                 action_type="GitHubCreateRepo",
@@ -95,6 +100,31 @@ class GitHubCreateRepoHandler(BaseHandler):
                     "private": is_private
                 },
                 confidence=0.95
+            )
+        
+        # Pattern 1b: "create private repo" (without name - extract from current directory or use default)
+        # CRITICAL FIX: Match "create private repo" without requiring a name
+        match = re.search(
+            r'^(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?P<private1b>private|public)\s+(?:github\s+)?(?:repo|repository)\s*$',
+            text_lower
+        )
+        if match:
+            is_private = match.group("private1b") == "private"
+            # Try to extract name from context (current directory name) or use default
+            repo_name = "my-repo"  # Default
+            if context and "cwd" in context:
+                import os
+                cwd = context.get("cwd", "")
+                if cwd:
+                    repo_name = os.path.basename(os.path.abspath(cwd))
+            return HandlerResult(
+                success=True,
+                action_type="GitHubCreateRepo",
+                params={
+                    "name": repo_name,
+                    "private": is_private
+                },
+                confidence=0.90  # Lower confidence since no name provided
             )
         
         # Pattern 2: "create github repository call it demo private" or "create github repo demo private"
