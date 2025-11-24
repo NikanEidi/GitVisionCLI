@@ -428,6 +428,50 @@ class AIActionExecutor:
                 editor=params.get("editor", "nano"),
             )
 
+        if raw_type == "openfile":
+            # OpenFile is handled by the CLI to open in internal editor panel
+            # This action just validates the path and returns success with file path
+            if "path" not in params:
+                return ActionResult(
+                    status=ActionStatus.FAILURE,
+                    message="Missing 'path' for OpenFile",
+                )
+            
+            # Resolve path relative to current view (self.base_dir)
+            full_path = (self.base_dir / params["path"]).resolve()
+            
+            # Use supervisor's policy to validate against SANDBOX ROOT
+            valid, error = self.supervisor.security_policy.validate_path(full_path)
+            if not valid:
+                return ActionResult(
+                    status=ActionStatus.FAILURE,
+                    message="Invalid file path",
+                    error=error,
+                )
+            
+            # Check if file exists
+            if not full_path.exists():
+                return ActionResult(
+                    status=ActionStatus.FAILURE,
+                    message=f"File not found: {params['path']}",
+                    error="File does not exist",
+                )
+            
+            # Check if it's actually a file (not a directory)
+            if not full_path.is_file():
+                return ActionResult(
+                    status=ActionStatus.FAILURE,
+                    message=f"Path is a directory, not a file: {params['path']}",
+                    error="Cannot open a directory",
+                )
+            
+            # Return success with file path for CLI to handle
+            return ActionResult(
+                status=ActionStatus.SUCCESS,
+                message=f"File ready to open: {params['path']}",
+                data={"path": str(full_path), "relative_path": params["path"]},
+            )
+
         # --- 2. Normalize type and perform path resolution for Supervisor actions ---
 
         atype = normalize_action_type(raw_type)

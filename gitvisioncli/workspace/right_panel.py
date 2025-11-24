@@ -265,7 +265,7 @@ class RightPanel:
 
                 return False, "Could not load markdown."
 
-            # Open file in Editor
+            # Open file in Editor (unified :edit command - auto-enables live edit if file exists)
             if cmd == ":edit":
                 if len(parts) < 2:
                     return False, "Usage: :edit <file>"
@@ -279,14 +279,20 @@ class RightPanel:
                 if self.editor_panel.load_file(filepath):
                     self.panel_manager.open_file(filepath)
                     self.panel_manager.set_mode(PanelMode.EDITOR)
-                    return True, f"Editing: {parts[1]}"
+                    # If file exists, automatically enable live edit mode for seamless AI editing
+                    if filepath.exists() and filepath.is_file():
+                        # Return special marker to trigger live edit prompt in CLI
+                        return True, f"LIVE_EDIT_READY:{parts[1]}"
+                    else:
+                        # New file - just open in editor without live edit
+                        return True, f"Editing: {parts[1]}"
 
                 return False, f"Could not load: {parts[1]}"
 
-            # Live Edit Mode (AI-powered live editing)
+            # Legacy :live-edit command (now just an alias for :edit)
             if cmd == ":live-edit":
                 if len(parts) < 2:
-                    return False, "Usage: :live-edit <file>"
+                    return False, "Usage: :live-edit <file> (use :edit instead)"
 
                 filepath = self.base_dir / parts[1]
 
@@ -296,7 +302,7 @@ class RightPanel:
                 if not filepath.is_file():
                     return False, f"Not a file: {parts[1]}"
 
-                # Open file in EDITOR mode
+                # Open file in EDITOR mode with live edit
                 if self.editor_panel.load_file(filepath):
                     self.panel_manager.open_file(filepath)
                     self.panel_manager.set_mode(PanelMode.EDITOR)

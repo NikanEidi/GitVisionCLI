@@ -213,6 +213,7 @@ class ChatEngine:
         # Track the most recent filesystem-modifying action so the CLI
         # can automatically open the affected file in the right panel.
         self._last_modified_path: Optional[str] = None
+        self._last_opened_file: Optional[str] = None
 
         # Auto-prune bookkeeping
         self._auto_prune_runs: int = 0
@@ -2543,6 +2544,25 @@ Please provide edit instructions."""
         except Exception:
             return None
 
+    def get_last_opened_file(self) -> Optional[Path]:
+        """
+        Absolute path of the last file opened via an OpenFile action, if any.
+        """
+        if not self._last_opened_file:
+            return None
+        try:
+            return Path(self._last_opened_file)
+        except Exception:
+            return None
+
+    def clear_last_opened_file(self) -> None:
+        """
+        Clear the last opened file tracking. Should be called after the file
+        has been opened in the UI to prevent it from being opened again on
+        subsequent AI responses.
+        """
+        self._last_opened_file = None
+
     async def chat(self, user_input: str) -> str:
         out = ""
         async for chunk in self.stream(user_input):
@@ -3210,6 +3230,14 @@ Please provide edit instructions."""
         """
         Updates internal tracking of the last modified file and triggers UI refresh.
         """
+        action_type = (action.get("type") or "").lower()
+        
+        # Track OpenFile actions separately
+        if action_type == "openfile" and result.status == ActionStatus.SUCCESS:
+            if result.data and "path" in result.data:
+                self._last_opened_file = result.data["path"]
+            return  # Don't track as modified file
+        
         # 1. Track last modified path for "open editor" heuristics
         # Prefer path from result.data, fallback to first modified file
         if result.status == ActionStatus.SUCCESS:

@@ -243,6 +243,8 @@ class EditorPanel:
 
             # Read text and normalize newlines
             raw = self.file_path.read_text(encoding="utf-8", errors="ignore")
+            # Strip ANSI escape codes from file content to prevent them from being displayed
+            raw = _strip_ansi(raw)
             raw = self._normalize_newlines(raw)
             self.content = raw.split("\n")
             self.cursor_line = 0
@@ -257,7 +259,9 @@ class EditorPanel:
         except Exception as e:
             logger.error(f"Error loading file {file_path}: {e}")
             self.file_path = None
-            self.content = [f"Error loading file: {e}"]
+            # Clear content on error - don't show error message in editor
+            # Errors should be shown in the chat console, not in the editor
+            self.content = [""]
             self.cursor_line = 0
             self.view_bottom_line = 1
             self._set_modified(False)

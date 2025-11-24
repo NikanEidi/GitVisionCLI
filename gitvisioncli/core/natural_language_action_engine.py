@@ -47,69 +47,102 @@ class NaturalLanguageActionEngine:
         """Initialize all regex patterns for action detection."""
         
         # File operations - line-based
+        # Support "remove", "delete", "rm", "dl", "erase", "drop", "clear"
         self._remove_line_re = re.compile(
-            r"\b(remove|delete|rm|dl)\s+line\s*(?P<line>\d+)\b", re.IGNORECASE
+            r"\b(remove|delete|rm|dl|erase|drop|clear)\s+line\s*(?P<line>\d+)\b", re.IGNORECASE
         )
         # Also match broken grammar: "rm 10", "delete line1", "remove ln5"
         self._remove_line_broken_re = re.compile(
             r"\b(?:rm|dl)\s+(?P<line>\d+)(?:\s|$)", re.IGNORECASE
         )
+        # Support "remove lines", "delete lines", "remove line range"
         self._remove_lines_re = re.compile(
-            r"\b(remove|delete|rm|dl)\s+lines?\s+(?P<start>\d+)\s*-\s*(?P<end>\d+)\b", re.IGNORECASE
+            r"\b(remove|delete|rm|dl|erase|drop|clear)\s+lines?\s+(?P<start>\d+)\s*-\s*(?P<end>\d+)\b", re.IGNORECASE
         )
         self._remove_lines_to_re = re.compile(
-            r"\b(remove|delete|rm|dl)\s+lines?\s+(?P<start>\d+)\s+to\s+(?P<end>\d+)\b", re.IGNORECASE
+            r"\b(remove|delete|rm|dl|erase|drop|clear)\s+lines?\s+(?P<start>\d+)\s+to\s+(?P<end>\d+)\b", re.IGNORECASE
         )
+        # Replace line - support "replace", "update", "change", "edit", "modify", "set"
         self._replace_line_re = re.compile(
-            r"\b(replace|update|change|edit)\s+line\s*(?P<line>\d+)\s+(?:with|to)\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+            r"\b(replace|update|change|edit|modify|set)\s+line\s*(?P<line>\d+)\s+(?:with|to|by)\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
         )
+        # Replace lines - support "replace", "update", "change", "edit", "modify"
+        self._replace_lines_re = re.compile(
+            r"\b(replace|update|change|edit|modify|set)\s+lines?\s+(?P<start>\d+)\s*-\s*(?P<end>\d+)\s+(?:with|to|by)\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE | re.DOTALL
+        )
+        # Insert at line - support "insert", "add", "write", "put", "place"
         self._insert_at_line_re = re.compile(
-            r"\b(insert|add|write)\s+(?:at|on)\s+line\s*(?P<line>\d+)\s*:?\s*(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+            r"\b(insert|add|write|put|place)\s+(?:at|on|in)\s+line\s*(?P<line>\d+)\s*:?\s*(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE | re.DOTALL
         )
+        # Add line patterns - support "add", "insert", "write", "put"
         self._add_line_re = re.compile(
-            r"\b(add|insert)\s+line\s*(?P<line>\d+)\s+with\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+            r"\b(add|insert|write|put)\s+(?P<text>.+?)\s+in\s+line\s*(?P<line>\d+)\b", re.IGNORECASE
+        )
+        self._add_line_with_re = re.compile(
+            r"\b(add|insert|write|put)\s+line\s*(?P<line>\d+)\s+with\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
         )
         self._edit_line_re = re.compile(
             r"\b(edit|change|update)\s+line\s*(?P<line>\d+)\s+with\s+(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
         )
+        # Insert before/after line patterns - support "insert", "add", "write", "put", "place"
+        self._insert_before_line_re = re.compile(
+            r"\b(insert|add|write|put|place)\s+(?:before|above|prior\s+to)\s+line\s*(?P<line>\d+)\s*:?\s*(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE | re.DOTALL
+        )
+        self._insert_after_line_re = re.compile(
+            r"\b(insert|add|write|put|place)\s+(?:after|below|following)\s+line\s*(?P<line>\d+)\s*:?\s*(?P<text>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE | re.DOTALL
+        )
+        # Append - support "add", "append", "insert", "write", "put" at bottom/end
         self._append_re = re.compile(
-            r"\b(add|append|insert)\s+(?:comment|text|code|line)?\s*(?:at|to)?\s*(?:the\s+)?(?:bottom|end)\b", re.IGNORECASE
+            r"\b(add|append|insert|write|put)\s+(?:comment|text|code|line)?\s*(?:at|to)?\s*(?:the\s+)?(?:bottom|end|tail)\b", re.IGNORECASE
         )
         
         # File operations - file-level
+        # Support quoted paths for files with spaces: "read 'my file.txt'" or 'read "my file.txt"'
         self._read_file_re = re.compile(
-            r"\b(?:read|show|display|cat|view)\s+(?:file\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:read|show|display|cat|view|see|print|list)\s+(?:file\s+)?(?P<path>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
         self._delete_file_re = re.compile(
-            r"\b(?:delete|remove|rm)\s+(?:file\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:delete|remove|rm|erase|trash)\s+(?:file\s+)?(?P<path>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
         # Create file - require explicit "file" keyword to avoid matching folder operations
+        # Also support "new file", "make file", "generate file", "write file"
+        # Support quoted paths: "create file 'my file.txt'" or 'create file "my file.txt"'
         self._create_file_re = re.compile(
-            r"\b(?:create|make|new)\s+file\s+(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:create|make|new|generate|write|add)\s+file\s+(?P<path>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
         # Also support "create <path>" without "file" but only if no folder keywords follow
+        # Also support "make <path>", "new <path>", "generate <path>"
+        # Support quoted paths
         self._create_file_simple_re = re.compile(
-            r"\b(?:create|make|new)\s+(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:create|make|new|generate|write|add)\s+(?P<path>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
+        # Rename file - support "rename", "mv", "move", "change name", "rechristen"
+        # Support quoted paths: "rename 'old file.txt' to 'new file.txt'"
         self._rename_file_re = re.compile(
-            r"\b(?:rename|mv|move)\s+(?:file\s+)?(?P<old>[^\s]+)\s+(?:to|as)\s+(?P<new>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:rename|mv|move|change\s+name|rechristen)\s+(?:file\s+)?(?P<old>(?:['\"][^'\"]+['\"]|[^\s]+))\s+(?:to|as|into)\s+(?P<new>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
+        # Move file - support "move", "mv", "transfer", "relocate"
+        # Support quoted paths
         self._move_file_re = re.compile(
-            r"\b(?:move|mv)\s+(?:file\s+)?(?P<path>[^\s]+)\s+to\s+(?P<target>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:move|mv|transfer|relocate)\s+(?:file\s+)?(?P<path>(?:['\"][^'\"]+['\"]|[^\s]+))\s+to\s+(?P<target>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
+        # Copy file - support "copy", "cp", "duplicate", "clone", "backup"
+        # Support quoted paths
         self._copy_file_re = re.compile(
-            r"\b(?:copy|cp)\s+(?:file\s+)?(?P<path>[^\s]+)\s+(?:to|as)\s+(?P<new>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:copy|cp|duplicate|clone|backup)\s+(?:file\s+)?(?P<path>(?:['\"][^'\"]+['\"]|[^\s]+))\s+(?:to|as|into)\s+(?P<new>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
         self._open_file_re = re.compile(
-            r"\b(?:open|edit|nano|code|view)\s+(?:file\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:open|edit|nano|code|view|show|load)\s+(?:file\s+)?(?P<path>[^\s]+)\b", re.IGNORECASE
         )
         
-        # Search operations
+        # Search operations - support "search", "find", "grep", "locate", "look for"
+        # Support quoted search patterns: "search for 'hello world'"
         self._search_files_re = re.compile(
-            r"\b(?:search|find|grep|locate)\s+(?:for|files?|text)?\s*(?P<pattern>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:search|find|grep|locate|look\s+for)\s+(?:for|files?|text)?\s*(?P<pattern>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
+        # Find files by name - support quoted names for files with spaces
         self._find_files_re = re.compile(
-            r"\b(?:find|locate|search\s+for)\s+(?:files?\s+)?(?:named|called|with\s+name)\s+(?P<name>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:find|locate|search\s+for)\s+(?:files?\s+)?(?:named|called|with\s+name)\s+(?P<name>(?:['\"][^'\"]+['\"]|[^\s]+))\b", re.IGNORECASE
         )
         
         # Folder operations
@@ -142,38 +175,48 @@ class NaturalLanguageActionEngine:
         self._git_status_re = re.compile(r"\bgit\s+status\b", re.IGNORECASE)
         self._git_log_re = re.compile(r"\bgit\s+log\b", re.IGNORECASE)
         # Git add - support "add files", "stage files", "add all", "stage all", "add everything"
+        # Also support "stash", "add .", "stage .", "add all files", "stage everything"
         # CRITICAL FIX: Put [^\s]+ before keyword patterns to prevent files like "all_files.txt"
         # from matching just "all" instead of the full filename
         self._git_add_re = re.compile(
-            r"\b(?:git\s+)?(?:add|stage)\s+(?P<path>[^\s]+|\.|all|everything|files?|changes?)\b", 
+            r"\b(?:git\s+)?(?:add|stage|stash)\s+(?P<path>[^\s]+|\.|all|everything|files?|changes?|staged?)\b", 
             re.IGNORECASE
         )
         # Git commit - support "commit changes", "commit with message", "save changes", "commit all"
+        # Also support "commit -m", "save with message", "save changes with"
         self._git_commit_re = re.compile(
-            r"\b(?:git\s+)?(?:commit|save\s+changes)\s+(?:all\s+)?(?:with\s+)?(?:message\s+)?['\"](?P<msg>[^'\"]+)['\"]", 
+            r"\b(?:git\s+)?(?:commit|save\s+changes|save)\s+(?:all\s+)?(?:with\s+)?(?:message\s+)?['\"](?P<msg>[^'\"]+)['\"]", 
             re.IGNORECASE
         )
         self._git_commit_simple_re = re.compile(
-            r"\b(?:git\s+)?(?:commit|save\s+changes)\s+(?:-m\s+)?['\"](?P<msg>[^'\"]+)['\"]", 
+            r"\b(?:git\s+)?(?:commit|save\s+changes|save)\s+(?:-m\s+)?['\"](?P<msg>[^'\"]+)['\"]", 
             re.IGNORECASE
         )
-        # Git commit without message - support "commit changes", "commit all"
+        # Git commit without message - support "commit changes", "commit all", "save"
         self._git_commit_no_msg_re = re.compile(
             r"\b(?:git\s+)?(?:commit|save)\s+(?:all\s+)?(?:changes?|files?)?\b(?!\s+['\"])", 
             re.IGNORECASE
         )
+        # Git branch - support "create branch", "new branch", "make branch", "branch"
         self._git_branch_re = re.compile(
-            r"\b(?:git\s+)?(?:create\s+)?(?:new\s+)?branch\s+(?P<name>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:git\s+)?(?:create\s+)?(?:new\s+)?(?:make\s+)?branch\s+(?P<name>[^\s]+)\b", re.IGNORECASE
         )
+        # Git checkout - support "checkout", "switch to", "switch", "go to branch"
         self._git_checkout_re = re.compile(
-            r"\b(?:git\s+)?(?:switch\s+to\s+|checkout\s+)(?:branch\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:git\s+)?(?:switch\s+(?:to\s+)?|checkout\s+|change\s+to\s+branch\s+)(?:branch\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
         )
+        # Git checkout with -b flag (create and switch)
+        self._git_checkout_b_re = re.compile(
+            r"\b(?:git\s+)?checkout\s+-b\s+(?P<branch>[^\s]+)\b", re.IGNORECASE
+        )
+        # Git merge - support "merge branch", "merge into", "combine branches"
         self._git_merge_re = re.compile(
-            r"\b(?:git\s+)?merge\s+(?:branch\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
+            r"\b(?:git\s+)?(?:merge|combine)\s+(?:branch\s+)?(?:into\s+)?(?P<branch>[^\s]+)\b", re.IGNORECASE
         )
         # Git push - support "push", "push all files", "push to github", "push everything", "upload to github"
+        # Also handle "push -u origin main", "push origin main", "upload", "sync to github"
         self._git_push_re = re.compile(
-            r"\b(?:git\s+)?(?:push|upload)\s*(?:all\s+)?(?:files?\s+and\s+folders?|everything|changes?)?\s*(?:to\s+(?:github|origin|remote))?\s*(?:-u\s+)?(?:origin\s+)?(?P<branch>[^\s]*)\b", 
+            r"\b(?:git\s+)?(?:push|upload|sync\s+to)\s*(?:all\s+)?(?:files?\s+and\s+folders?|everything|changes?)?\s*(?:to\s+(?:github|origin|remote))?\s*(?:-u\s+)?(?:origin\s+)?(?P<branch>[^\s]*)\b", 
             re.IGNORECASE
         )
         # Git pull - support "pull changes", "sync from github", "get latest"
@@ -221,14 +264,20 @@ class NaturalLanguageActionEngine:
             r"\bcreate\s+git\s+repo\s+(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
             re.IGNORECASE
         )
+        # GitHub issue with body - support quoted titles and bodies
+        # Also support "with description" instead of "with body"
         self._github_issue_re = re.compile(
-            r"\b(?:create\s+)?(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]\s+(?:with\s+)?body\s+['\"](?P<body>[^'\"]+)['\"]", re.IGNORECASE
+            r"\b(?:create\s+)?(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]\s+(?:with\s+)?(?:body|description)\s+['\"](?P<body>[^'\"]+)['\"]", re.IGNORECASE
         )
+        # GitHub issue - support "create issue", "new issue", "make issue", "open issue"
+        # Also support "file issue", "report issue", "add issue"
         self._github_issue_simple_re = re.compile(
-            r"\b(?:create\s+)?(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
+            r"\b(?:create|new|make|open|add|file|report)\s+(?:github\s+)?issue\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
         )
+        # GitHub PR - support "create pr", "new pr", "make pr", "open pr", "create pull request"
+        # Also support "file pr", "submit pr", "add pr"
         self._github_pr_re = re.compile(
-            r"\b(?:create\s+)?(?:github\s+)?(?:pr|pull\s+request)\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
+            r"\b(?:create|new|make|open|add|file|submit)\s+(?:github\s+)?(?:pr|pull\s+request)\s+['\"](?P<title>[^'\"]+)['\"]", re.IGNORECASE
         )
         
         # Change directory operations
@@ -264,11 +313,12 @@ class NaturalLanguageActionEngine:
         )
         
         # Content extraction patterns
+        # Use DOTALL flag to match newlines, and capture everything after "with" until end
         self._with_content_re = re.compile(
-            r"\bwith\s+(?P<content>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+            r"\bwith\s+(?P<content>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE | re.DOTALL
         )
         self._colon_content_re = re.compile(
-            r":\s*(?P<content>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE
+            r":\s*(?P<content>.+?)(?:\s+in\s+|\s*$)", re.IGNORECASE | re.DOTALL
         )
     
     def normalize_grammar(self, text: str) -> str:
@@ -318,7 +368,26 @@ class NaturalLanguageActionEngine:
         return text
     
     def extract_content(self, text: str, instruction: str) -> Optional[str]:
-        """Extract content from instruction text."""
+        """Extract content from instruction text. Handles both single-line and multi-line content."""
+        # For multi-line input, extract everything after "with" (including newlines)
+        if "\n" in text:
+            # Split on "with" and take everything after it
+            # This handles: "create app.py with\ncontent here\nmore content"
+            with_match = re.search(r"\bwith\s+(.+)", text, re.IGNORECASE | re.DOTALL)
+            if with_match:
+                content = with_match.group(1).strip()
+                # Remove any trailing "in <file>" patterns that might be at the end
+                content = re.sub(r"\s+in\s+[\w./]+\s*$", "", content, flags=re.IGNORECASE)
+                return content.strip()
+            
+            # Also try colon pattern for multi-line
+            colon_match = re.search(r":\s+(.+)", text, re.IGNORECASE | re.DOTALL)
+            if colon_match:
+                content = colon_match.group(1).strip()
+                content = re.sub(r"\s+in\s+[\w./]+\s*$", "", content, flags=re.IGNORECASE)
+                return content.strip()
+        
+        # For single-line input, use the original patterns
         # Try "with X" pattern
         match = self._with_content_re.search(text)
         if match:
@@ -386,11 +455,35 @@ class NaturalLanguageActionEngine:
                     }
                 )
             
-            # Replace line
+            # Replace line range (check before single line replace)
+            match = self._replace_lines_re.search(text)
+            if match:
+                start = int(match.group("start"))
+                end = int(match.group("end"))
+                content = match.group("text").strip()
+                # Only strip outer quotes if content doesn't contain newlines
+                if "\n" not in content:
+                    content = content.strip('"\'')
+                # Preserve multi-line content as-is
+                return ActionJSON(
+                    type="ReplaceBlock",
+                    params={
+                        "path": active_file.path,
+                        "start_line": start,
+                        "end_line": end,
+                        "text": content,
+                    }
+                )
+            
+            # Replace single line
             match = self._replace_line_re.search(text)
             if match:
                 line_num = int(match.group("line"))
-                content = match.group("text").strip().strip('"\'')
+                content = match.group("text").strip()
+                # Only strip outer quotes if content doesn't contain newlines
+                if "\n" not in content:
+                    content = content.strip('"\'')
+                # Preserve multi-line content as-is
                 return ActionJSON(
                     type="ReplaceBlock",
                     params={
@@ -401,11 +494,33 @@ class NaturalLanguageActionEngine:
                     }
                 )
             
-            # Insert at line (handle both "insert at line N" and "add line N with X")
-            match = self._insert_at_line_re.search(text) or self._add_line_re.search(text)
+            # Insert before line (check before "at line" to avoid conflicts)
+            match = self._insert_before_line_re.search(text)
             if match:
                 line_num = int(match.group("line"))
-                content = match.group("text").strip().strip('"\'')
+                content = match.group("text").strip()
+                # Only strip outer quotes if content doesn't contain newlines
+                if "\n" not in content:
+                    content = content.strip('"\'')
+                # Preserve multi-line content as-is
+                return ActionJSON(
+                    type="InsertBeforeLine",
+                    params={
+                        "path": active_file.path,
+                        "line_number": line_num,
+                        "text": content,
+                    }
+                )
+            
+            # Insert after line (check before "at line" to avoid conflicts)
+            match = self._insert_after_line_re.search(text)
+            if match:
+                line_num = int(match.group("line"))
+                content = match.group("text").strip()
+                # Only strip outer quotes if content doesn't contain newlines
+                if "\n" not in content:
+                    content = content.strip('"\'')
+                # Preserve multi-line content as-is
                 return ActionJSON(
                     type="InsertAfterLine",
                     params={
@@ -415,8 +530,53 @@ class NaturalLanguageActionEngine:
                     }
                 )
             
-            # Append to file
+            # Insert at line (handle "insert at line N", "add line N with X", and "add X in line N")
+            # Also handle multi-line content from :ml mode
+            match = self._insert_at_line_re.search(text) or self._add_line_re.search(text) or self._add_line_with_re.search(text)
+            if match:
+                line_num = int(match.group("line"))
+                content = match.group("text").strip()
+                # Only strip outer quotes if content doesn't contain newlines
+                if "\n" not in content:
+                    content = content.strip('"\'')
+                # Preserve multi-line content as-is
+                return ActionJSON(
+                    type="InsertAfterLine",
+                    params={
+                        "path": active_file.path,
+                        "line_number": line_num,
+                        "text": content,
+                    }
+                )
+            
+            # Append to file - handle "add X at bottom" or "add X at the bottom"
             if self._append_re.search(text):
+                # Extract content after "add/append/insert" and before "at bottom/end"
+                # Pattern: "add print('end') at bottom" or "add X at the bottom"
+                content_match = re.search(
+                    r"\b(add|append|insert)\s+(.+?)\s+(?:at|to)\s+(?:the\s+)?(?:bottom|end)\b",
+                    text,
+                    re.IGNORECASE | re.DOTALL
+                )
+                if content_match:
+                    content = content_match.group(2).strip()
+                    # Only strip outer quotes if content doesn't contain newlines
+                    # Preserve quotes that are part of the content (e.g., print("hello"))
+                    if "\n" not in content:
+                        # Strip only if content starts and ends with matching quotes
+                        if (content.startswith('"') and content.endswith('"')) or \
+                           (content.startswith("'") and content.endswith("'")):
+                            # Check if it's a simple quoted string (no internal quotes)
+                            if content.count('"') == 2 or content.count("'") == 2:
+                                content = content.strip('"\'')
+                    return ActionJSON(
+                        type="InsertAtBottom",
+                        params={
+                            "path": active_file.path,
+                            "text": content,
+                        }
+                    )
+                # Fallback to extract_content for other patterns
                 content = self.extract_content(text, user_message)
                 if content:
                     return ActionJSON(
@@ -496,6 +656,8 @@ class NaturalLanguageActionEngine:
         match = self._read_file_re.search(text)
         if match:
             path = match.group("path")
+            # Strip quotes if present (for paths with spaces)
+            path = path.strip('"\'')
             return ActionJSON(
                 type="ReadFile",
                 params={"path": path}
@@ -505,6 +667,8 @@ class NaturalLanguageActionEngine:
         match = self._delete_file_re.search(text)
         if match:
             path = match.group("path")
+            # Strip quotes if present (for paths with spaces)
+            path = path.strip('"\'')
             return ActionJSON(
                 type="DeleteFile",
                 params={"path": path}
@@ -514,6 +678,8 @@ class NaturalLanguageActionEngine:
         match = self._create_file_re.search(text)
         if match:
             path = match.group("path")
+            # Strip quotes if present (for paths with spaces)
+            path = path.strip('"\'')
             content = self.extract_content(text, user_message) or ""
             return ActionJSON(
                 type="CreateFile",
@@ -529,6 +695,8 @@ class NaturalLanguageActionEngine:
             # Check if this is actually a folder command
             if not re.search(r"\bfolder\b|\bdirectory\b|\bdir\b", text, re.IGNORECASE):
                 path = match.group("path")
+                # Strip quotes if present (for paths with spaces)
+                path = path.strip('"\'')
                 content = self.extract_content(text, user_message) or ""
                 return ActionJSON(
                     type="CreateFile",
@@ -543,6 +711,9 @@ class NaturalLanguageActionEngine:
         if match:
             old_path = match.group("old")
             new_path = match.group("new")
+            # Strip quotes if present (for paths with spaces)
+            old_path = old_path.strip('"\'')
+            new_path = new_path.strip('"\'')
             return ActionJSON(
                 type="RenameFile",
                 params={
@@ -556,6 +727,9 @@ class NaturalLanguageActionEngine:
         if match:
             path = match.group("path")
             target = match.group("target")
+            # Strip quotes if present (for paths with spaces)
+            path = path.strip('"\'')
+            target = target.strip('"\'')
             return ActionJSON(
                 type="MoveFile",
                 params={
@@ -569,6 +743,9 @@ class NaturalLanguageActionEngine:
         if match:
             path = match.group("path")
             new_path = match.group("new")
+            # Strip quotes if present (for paths with spaces)
+            path = path.strip('"\'')
+            new_path = new_path.strip('"\'')
             return ActionJSON(
                 type="CopyFile",
                 params={
@@ -581,6 +758,8 @@ class NaturalLanguageActionEngine:
         match = self._open_file_re.search(text)
         if match:
             path = match.group("path")
+            # Strip quotes if present (for paths with spaces)
+            path = path.strip('"\'')
             return ActionJSON(
                 type="OpenFile",
                 params={"path": path}
@@ -590,6 +769,8 @@ class NaturalLanguageActionEngine:
         match = self._search_files_re.search(text)
         if match:
             pattern = match.group("pattern")
+            # Strip quotes if present
+            pattern = pattern.strip('"\'')
             return ActionJSON(
                 type="RunShellCommand",
                 params={"command": f"grep -r '{pattern}' ."}
@@ -599,6 +780,8 @@ class NaturalLanguageActionEngine:
         match = self._find_files_re.search(text)
         if match:
             name = match.group("name")
+            # Strip quotes if present
+            name = name.strip('"\'')
             return ActionJSON(
                 type="RunShellCommand",
                 params={"command": f"find . -name '{name}'"}
@@ -619,11 +802,13 @@ class NaturalLanguageActionEngine:
             return ActionJSON(type="GitInit", params={})
         
         # Git status (routed to RunGitCommand for display)
-        if self._git_status_re.search(text):
+        # Also support "check status", "show status", "git state"
+        if self._git_status_re.search(text) or re.search(r"\b(?:check|show|view)\s+git\s+status\b", text, re.IGNORECASE):
             return ActionJSON(type="RunGitCommand", params={"command": "status"})
         
         # Git log (routed to RunGitCommand for display)
-        if self._git_log_re.search(text):
+        # Also support "show history", "view commits", "show log"
+        if self._git_log_re.search(text) or re.search(r"\b(?:show|view|see)\s+(?:git\s+)?(?:history|commits|log)\b", text, re.IGNORECASE):
             return ActionJSON(type="RunGitCommand", params={"command": "log"})
         
         # Git add
@@ -663,7 +848,16 @@ class NaturalLanguageActionEngine:
                 params={"name": name}
             )
         
-        # Git checkout
+        # Git checkout with -b flag (create and switch) - check this first
+        match = self._git_checkout_b_re.search(text)
+        if match:
+            branch = match.group("branch")
+            return ActionJSON(
+                type="GitCheckout",
+                params={"branch": branch, "create_new": True}
+            )
+        
+        # Git checkout - also handle "go to <branch>" for branch switching
         match = self._git_checkout_re.search(text)
         if match:
             branch = match.group("branch")
@@ -671,6 +865,23 @@ class NaturalLanguageActionEngine:
                 type="GitCheckout",
                 params={"branch": branch}
             )
+        
+        # Handle "go to <branch>" for git branch switching (check before directory change)
+        # This pattern should be checked before the general "go to" directory change
+        go_to_match = re.search(r"\bgo\s+to\s+(?P<branch>[^\s]+)\b", text, re.IGNORECASE)
+        if go_to_match:
+            # Check if this looks like a branch name (alphanumeric, hyphens, underscores)
+            # and if we're likely in a git context (user said "go to feature", "go to main", etc.)
+            branch_name = go_to_match.group("branch")
+            # Common branch name patterns
+            if re.match(r"^[a-zA-Z0-9_-]+$", branch_name) and branch_name not in ["..", ".", "/"]:
+                # Check if it's not a clear directory path (no slashes, not "src", "home", etc.)
+                # This is a heuristic - if it looks like a branch name, treat it as git checkout
+                if branch_name.lower() not in ["src", "home", "tmp", "var", "usr", "etc", "bin"]:
+                    return ActionJSON(
+                        type="GitCheckout",
+                        params={"branch": branch_name}
+                    )
         
         # Git merge
         match = self._git_merge_re.search(text)

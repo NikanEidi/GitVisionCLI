@@ -356,13 +356,20 @@ def _collect_fenced_block(first_line: str, fence: str) -> str:
     return "\n".join(lines)
 
 
-def _collect_manual_block(initial_line: str) -> str:
+def _collect_manual_block(
+    initial_line: str,
+    renderer: Optional[DualPanelRenderer] = None,
+    conversation: Optional[ConversationHistory] = None,
+    engine: Optional[ChatEngine] = None,
+) -> str:
     """
     Collect a manual multi-line block initiated by :paste / :ml / :block.
 
     The user terminates the block with a single line ':end' (case-insensitive).
     Any text after the initial command on the first line is treated as the
     first content line and preserved.
+    
+    Shows accumulated input in an expanded input frame as lines are collected.
     """
     stripped = initial_line.lstrip()
     lower = stripped.lower()
@@ -378,6 +385,11 @@ def _collect_manual_block(initial_line: str) -> str:
     if first_content:
         lines.append(first_content)
 
+    # Render initial state with first line in expanded input frame
+    if renderer and conversation:
+        accumulated = "\n".join(lines)
+        _render_ui_with_input(renderer, conversation, engine, accumulated)
+
     while True:
         next_raw = input("")
         next_line = _sanitize_user_input(next_raw)
@@ -386,8 +398,36 @@ def _collect_manual_block(initial_line: str) -> str:
             break
 
         lines.append(next_line)
+        
+        # Render accumulated input in expanded frame after each line
+        if renderer and conversation:
+            accumulated = "\n".join(lines)
+            _render_ui_with_input(renderer, conversation, engine, accumulated)
 
     return "\n".join(lines)
+
+
+def _render_ui_with_input(
+    renderer: Optional[DualPanelRenderer],
+    conversation: ConversationHistory,
+    engine: Optional[ChatEngine] = None,
+    input_text: str = "",
+):
+    """
+    Render UI with input text shown in expanded input frame (for multi-line mode).
+    """
+    print(clear_screen(), end="", flush=True)
+    
+    chat_content = conversation.render()
+    
+    if renderer:
+        status_line = _build_status_line(engine, conversation)
+        # Pass input_text to renderer so it shows in expanded input frame
+        frame = renderer.render(chat_content, input_text=input_text, status_line=status_line)
+    else:
+        frame = chat_content
+
+    print(frame, end="", flush=True)
 
 
 async def _handle_editor_open(
@@ -501,7 +541,8 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                     "Multi-line input mode: paste your content, then finish with a line ':end'."
                 )
                 _render_ui(renderer, conversation, engine)
-                collected = _collect_manual_block(user_input)
+                # Pass renderer and conversation so input frame expands as lines are collected
+                collected = _collect_manual_block(user_input, renderer, conversation, engine)
             else:
                 fence = _detect_fenced_block_start(user_input)
                 if fence is not None:
@@ -1106,20 +1147,50 @@ Output the raw {file_type_desc} content now:"""
                 except Exception as sync_err:
                     logger.warning(f"Workspace sync after AI response failed: {sync_err}")
 
-                # Auto-open the last file modified by INTERNAL actions so
-                # the user immediately sees live updates in the editor.
-                # Only open if it's actually a file (not a folder).
+                # Auto-open files: first check for explicitly opened files (OpenFile action),
+                # then fall back to modified files
+                opened_file = None
                 try:
-                    last_path = engine.get_last_modified_path()
-                    if last_path is not None:
-                        path_obj = Path(last_path)
-                        # Only open files, not folders
+                    # Check for OpenFile action first
+                    opened_file = engine.get_last_opened_file()
+                    file_opened = False
+                    
+                    if opened_file is not None:
+                        path_obj = Path(opened_file)
                         if path_obj.exists() and path_obj.is_file():
-                            right_panel.editor_panel.load_file(path_obj)
-                            right_panel.panel_manager.open_file(path_obj)
-                            right_panel.panel_manager.set_mode(PanelMode.EDITOR)
+                            try:
+                                right_panel.editor_panel.load_file(path_obj)
+                                right_panel.panel_manager.open_file(path_obj)
+                                right_panel.panel_manager.set_mode(PanelMode.EDITOR)
+                                file_opened = True
+                            except Exception as load_err:
+                                # If load_file() or panel operations fail, log but don't block fallback
+                                logger.warning(f"Failed to open file {opened_file}: {load_err}")
+                                file_opened = False
+                        else:
+                            # File doesn't exist or isn't valid - will clear in finally block
+                            file_opened = False
+                    
+                    # Fall back to auto-opening modified files (if no opened file was processed or it was invalid)
+                    if not file_opened:
+                        last_path = engine.get_last_modified_path()
+                        if last_path is not None:
+                            path_obj = Path(last_path)
+                            # Only open files, not folders
+                            if path_obj.exists() and path_obj.is_file():
+                                try:
+                                    right_panel.editor_panel.load_file(path_obj)
+                                    right_panel.panel_manager.open_file(path_obj)
+                                    right_panel.panel_manager.set_mode(PanelMode.EDITOR)
+                                except Exception as load_err:
+                                    logger.debug(f"Failed to open modified file {last_path}: {load_err}")
                 except Exception as editor_sync_err:
                     logger.debug(f"Editor sync after AI response skipped: {editor_sync_err}")
+                finally:
+                    # Always clear opened file tracking to prevent infinite retry loops
+                    # This ensures cleanup even if exceptions occur during file operations
+                    if opened_file is not None:
+                        engine.clear_last_opened_file()
 
             # After AI finishes, render a clean final frame (input line cleared)
             _render_ui(renderer, conversation, engine)

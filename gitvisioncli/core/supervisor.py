@@ -738,14 +738,21 @@ class ActionSupervisor:
     def _normalize_content(self, params: Dict[str, Any]) -> str:
         """
         Normalize content from various possible keys.
+        Strips ANSI escape codes to prevent them from being written to files.
         """
-        return (
+        import re
+        ansi_re = re.compile(r"\x1b\[[0-9;]*m")
+        
+        content = (
             params.get("content")
             or params.get("text")
             or params.get("value")
             or params.get("body")
             or ""
         )
+        
+        # Strip ANSI escape codes from content before writing to files
+        return ansi_re.sub("", content)
 
     def _write_safe(self, path: Path, content: str) -> None:
         """
