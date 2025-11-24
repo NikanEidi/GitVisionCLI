@@ -814,6 +814,9 @@ class EditorPanel(PanelComponent):
         Args:
             text: Text chunk to append to the current streaming buffer
         """
+        # CRITICAL FIX: Strip ANSI codes from streamed text to prevent them from appearing in files
+        text = _strip_ansi(text)
+        
         if not hasattr(self, '_stream_buffer'):
             self._stream_buffer = ""
             # If _stream_start_line was explicitly set (e.g., to 1 for full file replacement),
@@ -861,18 +864,21 @@ class EditorPanel(PanelComponent):
         Call this when AI generation is complete.
         """
         if hasattr(self, '_stream_buffer') and self._stream_buffer:
+            # CRITICAL FIX: Strip ANSI codes from final buffer before writing
+            buffer_clean = _strip_ansi(self._stream_buffer)
+            
             # Append final buffer content
             # _stream_start_line is 1-based, so if it's beyond content length, we append
             if self._stream_start_line > len(self.content):
                 # Append new line(s)
-                buffer_norm = self._normalize_newlines(self._stream_buffer)
+                buffer_norm = self._normalize_newlines(buffer_clean)
                 new_lines = buffer_norm.split("\n")
                 for line in new_lines:
                     self.content.append(line)
                 self._set_modified(True)
             else:
                 # Replace at current position (convert 1-based to 0-based)
-                self.replace_line(self._stream_start_line - 1, self._stream_buffer)
+                self.replace_line(self._stream_start_line - 1, buffer_clean)
             self._notify_change()
         
         # Clear streaming state

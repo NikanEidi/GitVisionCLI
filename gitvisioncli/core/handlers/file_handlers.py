@@ -144,7 +144,7 @@ class CreateFileHandler(BaseHandler):
         
         # If no content from patterns, try extract_content method
         if not content:
-            content = self.extract_content(text, full_message)
+                content = self.extract_content(text, full_message)
         
         # If still no content, try to extract from after "with"
         if not content:
@@ -165,16 +165,16 @@ class CreateFileHandler(BaseHandler):
                     after_path = re.sub(r'^\s*with\s+', '', after_path, flags=re.IGNORECASE)
                     if after_path:
                         content = after_path.strip()
-        
+                
         # Return result (with or without content)
-        return HandlerResult(
-            success=True,
-            action_type="CreateFile",
-            params={
-                "path": file_path,
-                "content": content or ""
-            },
-            confidence=0.95
+                return HandlerResult(
+                    success=True,
+                    action_type="CreateFile",
+                    params={
+                        "path": file_path,
+                        "content": content or ""
+                    },
+                    confidence=0.95
         )
 
 

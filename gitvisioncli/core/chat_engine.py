@@ -911,6 +911,13 @@ simple natural language commands may already be handled by the direct engine."""
         )
         
         if direct_action:
+            # Ensure direct_action is a dict (safety check)
+            if not isinstance(direct_action, dict):
+                logger.warning(f"Direct action is not a dict: {type(direct_action)}, value: {direct_action}")
+                # Fall through to AI processing
+                direct_action = None
+            
+            if direct_action:
             # Handle special UI commands (like ShowGitGraph) that don't go through executor
             # These are handled by CLI layer before reaching here, but we check anyway
             if direct_action.get("type") == "ShowGitGraph":

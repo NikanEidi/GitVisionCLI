@@ -223,7 +223,7 @@ class InsertHandler(FileHandler):
         
         # If no content from pattern, try extract_content method
         if not content:
-            content = self.extract_content(text, full_message)
+        content = self.extract_content(text, full_message)
         
         # If still no content, try to extract from patterns
         if not content:

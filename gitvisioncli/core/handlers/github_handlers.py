@@ -47,29 +47,27 @@ class GitHubCreateRepoHandler(BaseHandler):
     def can_handle(self, text: str, context: Optional[Dict[str, Any]] = None) -> float:
         text_lower = text.lower()
         # Higher priority - check for "github repo" or "github repository" specifically
-        if re.search(r'\b(?:create|make)\s+(?:github\s+)?(?:repo|repository)\b', text_lower):
+        if re.search(r'\b(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?:github\s+)?(?:repo|repository)\b', text_lower):
             return 0.95  # Higher than CreateFileHandler
         # Also match "create repo" and "make repo" (without github keyword) - but only if followed by a name
-        if re.search(r'^(?:create|make)\s+repo\s+[\w-]+', text_lower):
+        if re.search(r'^(?:create|make|initialize)\s+repo\s+[\w-]+', text_lower):
+            return 0.95
+        # Match "initialize <name> private repository in my github" or similar patterns
+        if re.search(r'\b(?:initialize|init|set\s+up)\s+[\w-]+\s+(?:private|public)\s+(?:github\s+)?(?:repo|repository)\s+in\s+(?:my\s+)?github\b', text_lower):
             return 0.95
         return 0.0
     
     def parse(self, text: str, context: Optional[Dict[str, Any]] = None, full_message: Optional[str] = None) -> HandlerResult:
         text_lower = text.lower()
+        
+        # Pattern 0: "initialize demo private repository in my github" - special case for complex natural language
         match = re.search(
-            r'\b(?:create|make)\s+(?:github\s+)?(?:repo|repository)\s+(?P<name>[^\s]+)(?:\s+(?P<private>private|public))?\b',
+            r'\b(?:initialize|init|set\s+up)\s+(?P<name0>[\w-]+)\s+(?P<private0>private|public)\s+(?:github\s+)?(?:repo|repository)\s+in\s+(?:my\s+)?github\b',
             text_lower
         )
-        if not match:
-            # Try "create repo" or "make repo" (without github keyword)
-            match = re.search(
-                r'^(?:create|make)\s+repo\s+(?P<name>[\w-]+)(?:\s+(?P<private>private|public))?\b',
-                text_lower
-        )
         if match:
-            name = match.group("name")
-            private_flag = match.group("private")
-            is_private = private_flag == "private" if private_flag else False
+            name = match.group("name0")
+            is_private = match.group("private0") == "private"
             return HandlerResult(
                 success=True,
                 action_type="GitHubCreateRepo",
@@ -79,6 +77,80 @@ class GitHubCreateRepoHandler(BaseHandler):
                 },
                 confidence=0.95
             )
+        
+        # Pattern 1: "create private github repository call it demo" or "create github repo named demo private"
+        # Supports: private/public before or after, "call it", "named", "called"
+        match = re.search(
+            r'\b(?:create|make|set\s+up|initialize)\s+(?:a\s+)?(?P<private1>private|public)\s+(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name1>[^\s]+)\b',
+            text_lower
+        )
+        if match:
+            name = match.group("name1")
+            is_private = match.group("private1") == "private"
+            return HandlerResult(
+                success=True,
+                action_type="GitHubCreateRepo",
+                params={
+                    "name": name,
+                    "private": is_private
+                },
+                confidence=0.95
+            )
+        
+        # Pattern 2: "create github repository call it demo private" or "create github repo demo private"
+            match = re.search(
+            r'\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name2>[^\s]+)\s+(?P<private2>private|public)\b',
+                text_lower
+        )
+        if match:
+            name = match.group("name2")
+            is_private = match.group("private2") == "private"
+            return HandlerResult(
+                success=True,
+                action_type="GitHubCreateRepo",
+                params={
+                    "name": name,
+                    "private": is_private
+                },
+                confidence=0.95
+            )
+        
+        # Pattern 3: "create github repo demo" (no privacy specified, defaults to private)
+        match = re.search(
+            r'\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name3>[^\s]+)\b(?!\s+(?:private|public))',
+            text_lower
+        )
+        if match:
+            name = match.group("name3")
+            return HandlerResult(
+                success=True,
+                action_type="GitHubCreateRepo",
+                params={
+                    "name": name,
+                    "private": True  # Default to private
+                },
+                confidence=0.95
+            )
+        
+        # Pattern 4: "create repo demo" (without github keyword, but has name)
+        match = re.search(
+            r'^(?:create|make)\s+repo\s+(?P<name4>[\w-]+)(?:\s+(?P<private4>private|public))?\b',
+            text_lower
+        )
+        if match:
+            name = match.group("name4")
+            private_flag = match.group("private4")
+            is_private = private_flag == "private" if private_flag else True  # Default to private
+            return HandlerResult(
+                success=True,
+                action_type="GitHubCreateRepo",
+                params={
+                    "name": name,
+                    "private": is_private
+                },
+                confidence=0.90  # Slightly lower confidence without "github" keyword
+            )
+        
         return HandlerResult(success=False, error="Could not parse create github repo")
 
 

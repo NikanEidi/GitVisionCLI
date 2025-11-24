@@ -309,23 +309,29 @@ class NaturalLanguageActionEngine:
         # "make a private repo called demo", "create repo demo private"
         # CRITICAL FIX: Also support "create git repo <name> <private>" to distinguish from local git init
         self._github_repo_re = re.compile(
-            r"\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+|git\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\s+(?P<private>private|public)\b", 
+            r"\b(?:create|make|set\s+up|initialize|init)\s+(?:a\s+)?(?:github\s+|git\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\s+(?P<private>private|public)\b", 
             re.IGNORECASE
         )
         # Also support: "create private repository demo", "create demo repository private"
+        # Also support: "initialize demo private repository in my github"
         self._github_repo_alt_re = re.compile(
-            r"\b(?:create|make)\s+(?:a\s+)?(?P<private>private|public)\s+(?:github\s+|git\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b", 
+            r"\b(?:create|make|initialize|init|set\s+up)\s+(?:a\s+)?(?P<private>private|public)\s+(?:github\s+|git\s+)?(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\s*(?:in\s+(?:my\s+)?github)?\b", 
             re.IGNORECASE
         )
-        # Support: "create github repo <name>" (without privacy setting, defaults to public)
+        # Support: "initialize <name> private repository in my github" - special pattern
+        self._github_repo_init_pattern = re.compile(
+            r"\b(?:initialize|init|set\s+up)\s+(?P<name>[\w-]+)\s+(?P<private>private|public)\s+(?:github\s+)?(?:repo|repository)\s+in\s+(?:my\s+)?github\b", 
+            re.IGNORECASE
+        )
+        # Support: "create github repo <name>" (without privacy setting, defaults to private)
         self._github_repo_simple_re = re.compile(
-            r"\b(?:create|make|set\s+up)\s+(?:a\s+)?(?:github\s+)(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
+            r"\b(?:create|make|set\s+up|initialize|init)\s+(?:a\s+)?(?:github\s+)(?:repo|repository)\s+(?:named\s+|called\s+|call\s+it\s+)?(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
             re.IGNORECASE
         )
         # CRITICAL FIX: Support "create git repo <name>" (without privacy) as GitHub repo
         # This distinguishes from "create git repo" (no name) which is local git init
         self._github_repo_git_name_re = re.compile(
-            r"\bcreate\s+git\s+repo\s+(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
+            r"\b(?:create|make|initialize|init)\s+git\s+repo\s+(?P<name>[^\s]+)\b(?!\s+(?:private|public))", 
             re.IGNORECASE
         )
         # GitHub issue with body - support quoted titles and bodies
@@ -504,11 +510,14 @@ class NaturalLanguageActionEngine:
             best_confidence = 0.0
             best_result = None
             
+            # Build context dict for handlers
+            context = {"active_file": active_file.path}
+            
             for handler in self.file_handlers:
-                can_handle_confidence = handler.can_handle(text, active_file.path)
+                can_handle_confidence = handler.can_handle(text, context)
                 # Only try parsing if handler can handle it (confidence > 0)
                 if can_handle_confidence > 0:
-                    result = handler.parse(text, active_file.path, user_message)
+                    result = handler.parse(text, context, user_message)
                     # Compare parse confidence against best parse confidence
                     if result.success and result.confidence > best_confidence:
                         best_handler = handler
@@ -1206,6 +1215,20 @@ class NaturalLanguageActionEngine:
         
         # Create GitHub repo - try all patterns
         # CRITICAL FIX: Check GitHub patterns first to prevent false positives with git init
+        # Try special init pattern first (e.g., "initialize demo private repository in my github")
+        match = self._github_repo_init_pattern.search(text)
+        if match:
+            name = match.group("name")
+            is_private = match.group("private").lower() == "private"
+            return ActionJSON(
+                type="GitHubCreateRepo",
+                params={
+                    "name": name,
+                    "private": is_private,
+                }
+            )
+        
+        # Try other patterns
         match = (self._github_repo_re.search(text) or 
                  self._github_repo_alt_re.search(text) or 
                  self._github_repo_simple_re.search(text) or
@@ -1214,7 +1237,7 @@ class NaturalLanguageActionEngine:
             name = match.group("name")
             # Privacy setting may not be present in simple/git_name patterns
             private_str = match.group("private") if "private" in match.groupdict() else None
-            is_private = private_str and private_str.lower() == "private" if private_str else False
+            is_private = private_str and private_str.lower() == "private" if private_str else True  # Default to private
             return ActionJSON(
                 type="GitHubCreateRepo",
                 params={

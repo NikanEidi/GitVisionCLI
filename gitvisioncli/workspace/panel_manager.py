@@ -114,9 +114,9 @@ class PanelManager:
         Sync UI after filesystem changes.
 
         CRITICAL FIX:
-        - Never overwrite unsaved in-memory edits.
-        - Only reload Editor/Markdown contents from disk when
-          the buffer is *not* marked as modified.
+        - If change_type is "ai_modify", it means an action just modified the file
+          → Clear modified flag and reload (action changes are authoritative)
+        - For other changes, only reload if buffer is NOT modified (preserve user edits)
         """
 
         change_type = getattr(event, "change_type", "UNKNOWN")
@@ -129,9 +129,35 @@ class PanelManager:
             except Exception as e:
                 logger.error(f"TreePanel update failed: {e}")
 
-        # EDITOR MODE → reload file content only if NOT modified
+        # EDITOR MODE → reload file content
         if self.mode == PanelMode.EDITOR and self.active_path:
-            if not self.is_modified:
+            # If this is an AI action modification, always reload (action is authoritative)
+            if change_type == "ai_modify":
+                # Check if the modified file matches the active file
+                event_path = getattr(event, "path", None)
+                if event_path:
+                    # Normalize paths for comparison
+                    event_path_resolved = Path(event_path).resolve()
+                    active_path_resolved = self.active_path.resolve()
+                    if event_path_resolved == active_path_resolved:
+                        logger.info(f"PanelManager: AI modified active file, reloading and clearing modified flag")
+                        self.is_modified = False  # Clear modified flag since action applied the change
+                        try:
+                            self.editor_panel.load_file(self.active_path)
+                        except Exception as e:
+                            logger.error(f"Editor reload failed: {e}")
+                    else:
+                        logger.debug(f"PanelManager: AI modified different file ({event_path_resolved} vs {active_path_resolved}), not reloading")
+                else:
+                    # If no specific path, reload anyway (might be a general trigger)
+                    logger.info(f"PanelManager: AI modify event without specific path, reloading active file")
+                    self.is_modified = False
+                    try:
+                        self.editor_panel.load_file(self.active_path)
+                    except Exception as e:
+                        logger.error(f"Editor reload failed: {e}")
+            elif not self.is_modified:
+                # For other changes (user edits, external tools), only reload if not modified
                 try:
                     self.editor_panel.load_file(self.active_path)
                 except Exception as e:

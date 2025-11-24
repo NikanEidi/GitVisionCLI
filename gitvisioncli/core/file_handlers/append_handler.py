@@ -103,14 +103,14 @@ class AppendHandler(FileHandler):
         content = None
         
         # First try pattern: "add X at bottom" -> extract X
-        pattern_match = re.search(
-            r'\b(add|append|insert|write|put)\s+(.+?)\s+(?:at|to)\s+(?:the\s+)?(?:bottom|end|tail)\b',
-            text,
-            re.IGNORECASE | re.DOTALL
-        )
-        if pattern_match:
-            content = pattern_match.group(2).strip()
-            content = self._clean_quotes(content)
+            pattern_match = re.search(
+                r'\b(add|append|insert|write|put)\s+(.+?)\s+(?:at|to)\s+(?:the\s+)?(?:bottom|end|tail)\b',
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+            if pattern_match:
+                content = pattern_match.group(2).strip()
+                content = self._clean_quotes(content)
         
         # If no content from pattern, try extract_content method
         if not content:

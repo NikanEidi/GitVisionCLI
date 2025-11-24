@@ -65,6 +65,8 @@ class ProjectGenerator:
         # 2. Create AI-defined files
         # --------------------------------------------------
         for rel_path, content in structure.items():
+            # CRITICAL FIX: Strip ANSI codes from AI-generated content
+            content = self._strip_ansi(content)
             full_rel_path = f"{project_root_rel}/{rel_path}"
             actions.append({
                 "type": ActionType.CREATE_FILE.value,
@@ -215,6 +217,28 @@ class ProjectGenerator:
                 })
 
         return actions
+    
+    def _strip_ansi(self, text: str) -> str:
+        """
+        Strip ANSI escape codes from text.
+        
+        Args:
+            text: Text that may contain ANSI codes
+        
+        Returns:
+            Text with ANSI codes removed
+        """
+        import re
+        # Comprehensive ANSI escape code pattern
+        ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
+        # Pattern for corrupted ANSI sequences (missing ESC prefix)
+        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|[0-9;]+m")
+        
+        # First remove full ANSI sequences
+        text = ansi_re.sub("", text)
+        # Then remove any corrupted/partial ANSI sequences
+        text = corrupted_ansi_re.sub("", text)
+        return text
 
     # ------------------------------------------------------------
     # TEMPLATE CONTENT

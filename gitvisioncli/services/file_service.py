@@ -69,6 +69,9 @@ class FileService:
             True if successful
         """
         try:
+            # CRITICAL FIX: Strip ANSI escape codes from content before writing
+            content = self._strip_ansi(content)
+            
             p = self._resolve_path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding=encoding)
@@ -77,6 +80,28 @@ class FileService:
         except Exception as e:
             logger.error(f"Failed to write {path}: {e}")
             return False
+    
+    def _strip_ansi(self, text: str) -> str:
+        """
+        Strip ANSI escape codes from text.
+        
+        Args:
+            text: Text that may contain ANSI codes
+        
+        Returns:
+            Text with ANSI codes removed
+        """
+        import re
+        # Comprehensive ANSI escape code pattern
+        ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
+        # Pattern for corrupted ANSI sequences (missing ESC prefix)
+        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|[0-9;]+m")
+        
+        # First remove full ANSI sequences
+        text = ansi_re.sub("", text)
+        # Then remove any corrupted/partial ANSI sequences
+        text = corrupted_ansi_re.sub("", text)
+        return text
     
     def append(self, path: str, content: str, encoding: str = "utf-8") -> bool:
         """
@@ -91,6 +116,9 @@ class FileService:
             True if successful
         """
         try:
+            # CRITICAL FIX: Strip ANSI escape codes from content before appending
+            content = self._strip_ansi(content)
+            
             p = self._resolve_path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open("a", encoding=encoding) as f:

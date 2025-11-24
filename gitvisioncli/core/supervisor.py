@@ -1099,7 +1099,8 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        text = params.get("text", "")
+        # Normalize and strip ANSI codes from text
+        text = self._normalize_content(params)
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
             result = self.editing_engine.insert_at_bottom(content, block=text)
@@ -1125,7 +1126,8 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        text = params.get("text", "")
+        # Normalize and strip ANSI codes from text
+        text = self._normalize_content(params)
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
             result = self.editing_engine.insert_at_top(content, block=text)
@@ -1151,8 +1153,11 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        old_text = params.get("old_text", "")
-        new_text = params.get("new_text", "")
+        # Normalize and strip ANSI codes from text
+        old_text_params = {"content": params.get("old_text", ""), "text": params.get("old_text", "")}
+        new_text_params = {"content": params.get("new_text", ""), "text": params.get("new_text", "")}
+        old_text = self._normalize_content(old_text_params)
+        new_text = self._normalize_content(new_text_params)
 
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
@@ -1184,7 +1189,8 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        text = params.get("text", "")
+        # Normalize and strip ANSI codes from text
+        text = self._normalize_content(params)
 
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
@@ -1220,7 +1226,8 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        text = params.get("text", "")
+        # Normalize and strip ANSI codes from text
+        text = self._normalize_content(params)
 
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
@@ -1474,12 +1481,17 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        block = params.get("block", params.get("text", ""))
+        # Normalize and strip ANSI codes from block
+        block_params = {
+            "content": params.get("block", params.get("text", "")),
+            "text": params.get("block", params.get("text", ""))
+        }
+        block = self._normalize_content(block_params)
 
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
             result = self.editing_engine.insert_at_bottom(content, block=block)
-            path.write_text(result.content, encoding="utf-8")
+            self._write_safe(path, result.content)
             return ActionResult(
                 status=ActionStatus.SUCCESS,
                 message=f"Inserted block at bottom of {path.name}",
@@ -1500,7 +1512,12 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        block = params.get("block", params.get("text", ""))
+        # Normalize and strip ANSI codes from block
+        block_params = {
+            "content": params.get("block", params.get("text", "")),
+            "text": params.get("block", params.get("text", ""))
+        }
+        block = self._normalize_content(block_params)
 
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
@@ -1533,7 +1550,12 @@ class ActionSupervisor:
         if error_result:
             return error_result
 
-        block = params.get("block", params.get("text", ""))
+        # Normalize and strip ANSI codes from block
+        block_params = {
+            "content": params.get("block", params.get("text", "")),
+            "text": params.get("block", params.get("text", ""))
+        }
+        block = self._normalize_content(block_params)
 
         try:
             content = path.read_text(encoding="utf-8", errors="ignore")
@@ -1557,7 +1579,7 @@ class ActionSupervisor:
                 end_line=end_line if end_line is not None else (end or start_line or start or 1),
                 block=block,
             )
-            path.write_text(result.content, encoding="utf-8")
+            self._write_safe(path, result.content)
             return ActionResult(
                 status=ActionStatus.SUCCESS,
                 message="Replaced block in file",
@@ -2485,10 +2507,8 @@ class ActionSupervisor:
 
         remote = params.get("remote", "origin")
         branch = params.get("branch") or repo_state.current_branch
-        args = ["push", remote]
-        if branch:
-            args.append(branch)
-
+        set_upstream = params.get("set_upstream", True)  # Default to True for new branches
+        
         # Ensure the remote exists before attempting to push.
         has_remote, _, _ = self._run_git_command(
             ["remote", "get-url", remote],
@@ -2502,11 +2522,30 @@ class ActionSupervisor:
                 error="Missing remote",
             )
 
+        # Build push command - use -u flag to set upstream for new branches
+        args = ["push"]
+        if set_upstream and branch:
+            args.extend(["-u", remote, branch])
+        elif branch:
+            args.extend([remote, branch])
+        else:
+            args.append(remote)
+
         success, stdout, stderr = self._run_git_command(
             args,
             require_repo=True,
             cwd=repo_state.root,
         )
+        
+        # If push fails with "no upstream branch", try with -u flag
+        if not success and "no upstream branch" in stderr.lower() and branch and not set_upstream:
+            logger.info("Retrying push with -u flag to set upstream")
+            args_retry = ["push", "-u", remote, branch]
+            success, stdout, stderr = self._run_git_command(
+                args_retry,
+                require_repo=True,
+                cwd=repo_state.root,
+            )
         if success:
             return ActionResult(
                 status=ActionStatus.SUCCESS,

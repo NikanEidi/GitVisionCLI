@@ -101,7 +101,23 @@ class CodeReviewer:
         prompt = self._build_prompt(code, lang, filename)
         # Call the ChatEngine's non-streaming method
         ai_response = await self.chat.ask_full(prompt)
+        # CRITICAL FIX: Strip ANSI codes from AI response before parsing
+        ai_response = self._strip_ansi(ai_response)
         return self._parse_response(ai_response)
+    
+    def _strip_ansi(self, text: str) -> str:
+        """Strip ANSI escape codes from text."""
+        import re
+        # Comprehensive ANSI escape code pattern
+        ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
+        # Pattern for corrupted ANSI sequences (missing ESC prefix)
+        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|[0-9;]+m")
+        
+        # First remove full ANSI sequences
+        text = ansi_re.sub("", text)
+        # Then remove any corrupted/partial ANSI sequences
+        text = corrupted_ansi_re.sub("", text)
+        return text
 
     def _detect_language(self, filename: Optional[str], code: str) -> str:
         """Heuristic-based language detection."""

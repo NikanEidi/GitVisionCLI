@@ -34,7 +34,23 @@ class ReadmeGenerator:
         if ai_enhance and self.chat:
             prompt = self._build_ai_prompt(base, name)
             enhanced = await self.chat.ask_full(prompt)
+            # CRITICAL FIX: Strip ANSI codes from AI-enhanced content
+            enhanced = self._strip_ansi(enhanced)
             return enhanced.strip()
+    
+    def _strip_ansi(self, text: str) -> str:
+        """Strip ANSI escape codes from text."""
+        import re
+        # Comprehensive ANSI escape code pattern
+        ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
+        # Pattern for corrupted ANSI sequences (missing ESC prefix)
+        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|[0-9;]+m")
+        
+        # First remove full ANSI sequences
+        text = ansi_re.sub("", text)
+        # Then remove any corrupted/partial ANSI sequences
+        text = corrupted_ansi_re.sub("", text)
+        return text
 
         return base
 
