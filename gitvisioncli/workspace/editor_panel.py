@@ -32,13 +32,25 @@ from gitvisioncli.ui.colors import (
 
 logger = logging.getLogger(__name__)
 
-# ANSI escape sequence pattern
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+# Comprehensive ANSI escape sequence patterns
+# Full ANSI sequences: \x1b[ or \033[ followed by digits/semicolons and command char
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
+# Corrupted ANSI sequences (missing ESC prefix)
+# Matches and removes entirely:
+# - [number;m (bracket is part of corruption)
+# - (number;m (paren is part of corruption)
+# - standalone number;m (not preceded by bracket/paren)
+# This handles the main case: [38;5;46m becomes empty string
+CORRUPTED_ANSI_RE = re.compile(r"\[[0-9;]+m|\([0-9;]+m|[0-9;]+m")
 
 
 def _strip_ansi(text: str) -> str:
-    """Remove ANSI escape sequences from text."""
-    return ANSI_RE.sub("", text)
+    """Remove ANSI escape sequences from text, including partial/corrupted ones."""
+    # First remove full ANSI sequences
+    text = ANSI_RE.sub("", text)
+    # Then remove any corrupted/partial ANSI sequences entirely (including leading brackets/parentheses)
+    text = CORRUPTED_ANSI_RE.sub("", text)
+    return text
 
 
 def _visible_len(text: str) -> int:
@@ -98,7 +110,9 @@ def _truncate_ansi_aware(text: str, max_visible: int) -> str:
     return result
 
 
-class EditorPanel:
+from gitvisioncli.ui.components.panel_component import PanelComponent, ComponentConfig
+
+class EditorPanel(PanelComponent):
     """
     Terminal-based text editor with line numbers and basic syntax highlighting.
 
@@ -115,6 +129,8 @@ class EditorPanel:
     - EditorPanel is the single source of truth for the file content
       while it is open in the IDE. Disk is only re-read when the user
       explicitly opens/reloads a file (or PanelManager decides to reload).
+    
+    Refactored to use PanelComponent base class for modular architecture.
     """
 
     def __init__(
@@ -123,6 +139,10 @@ class EditorPanel:
         on_change_callback: Optional[Callable[[], None]] = None,
         on_modified_callback: Optional[Callable[[bool], None]] = None,
     ):
+        # Initialize with ComponentConfig
+        config = ComponentConfig(width=width, height=24, enabled=True, visible=True)
+        super().__init__(config)
+        
         # Render width (used by right panel to keep layout)
         self.width = width
 

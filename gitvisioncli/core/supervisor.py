@@ -741,7 +741,17 @@ class ActionSupervisor:
         Strips ANSI escape codes to prevent them from being written to files.
         """
         import re
-        ansi_re = re.compile(r"\x1b\[[0-9;]*m")
+        # Comprehensive ANSI escape code pattern:
+        # - \x1b[ or \033[ (ESC sequence start) followed by digits/semicolons and command char
+        # - Also handle partial/corrupted sequences like 38;5;46m (missing ESC and bracket prefix)
+        ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
+        # Pattern for corrupted ANSI sequences (missing ESC prefix)
+        # Matches and removes entirely:
+        # - [number;m (bracket is part of corruption)
+        # - (number;m (paren is part of corruption)  
+        # - standalone number;m (not preceded by bracket/paren)
+        # This handles the main case: [38;5;46m becomes empty string
+        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|\([0-9;]+m|[0-9;]+m")
         
         content = (
             params.get("content")
@@ -752,7 +762,11 @@ class ActionSupervisor:
         )
         
         # Strip ANSI escape codes from content before writing to files
-        return ansi_re.sub("", content)
+        # First remove full ANSI sequences
+        content = ansi_re.sub("", content)
+        # Then remove any corrupted/partial ANSI sequences entirely (including leading brackets/parentheses)
+        content = corrupted_ansi_re.sub("", content)
+        return content
 
     def _write_safe(self, path: Path, content: str) -> None:
         """
@@ -2640,15 +2654,22 @@ class ActionSupervisor:
         transaction: TransactionManager,
     ) -> ActionResult:
         """
-        Configure a git remote.
+        Manage git remotes.
 
         Params:
+            operation: "add", "remove", "list", "rename", "set-url", "show" (default: "add")
             name: remote name (default "origin")
-            url:  remote URL (required)
+            url: remote URL (required for add/set-url)
+            old_name: old remote name (for rename)
+            new_name: new remote name (for rename)
 
         Behavior:
-            - If the remote exists, run: git remote set-url <name> <url>
-            - If it does not exist, run: git remote add <name> <url>
+            - add: If remote exists, update with set-url; otherwise add
+            - remove: Remove remote
+            - list: List all remotes
+            - rename: Rename remote
+            - set-url: Update remote URL
+            - show: Show remote details
         """
         repo_state = self._get_git_repo_state()
         if not repo_state.is_repo:
@@ -2658,9 +2679,121 @@ class ActionSupervisor:
                 error="Missing .git",
             )
 
+        operation = params.get("operation", "add").lower()
         name = params.get("name", "origin")
+        
+        # Handle list operation
+        if operation == "list":
+            success, stdout, stderr = self._run_git_command(
+                ["remote", "-v"],
+                require_repo=True,
+                cwd=repo_state.root,
+            )
+            if success:
+                return ActionResult(
+                    status=ActionStatus.SUCCESS,
+                    message="Git remotes listed",
+                    data={"remotes": stdout, "output": stdout},
+                )
+            return ActionResult(
+                status=ActionStatus.FAILURE,
+                message="Failed to list git remotes",
+                error=stderr,
+            )
+        
+        # Handle remove operation
+        if operation == "remove" or operation == "rm":
+            success, stdout, stderr = self._run_git_command(
+                ["remote", "remove", name],
+                require_repo=True,
+                cwd=repo_state.root,
+            )
+            if success:
+                return ActionResult(
+                    status=ActionStatus.SUCCESS,
+                    message=f"Git remote removed: {name}",
+                    data={"remote": name, "output": stdout},
+                )
+            return ActionResult(
+                status=ActionStatus.FAILURE,
+                message=f"Failed to remove git remote: {name}",
+                error=stderr,
+            )
+        
+        # Handle rename operation
+        if operation == "rename":
+            old_name = params.get("old_name") or name
+            new_name = params.get("new_name")
+            if not new_name:
+                return ActionResult(
+                    status=ActionStatus.FAILURE,
+                    message="New remote name is required for rename",
+                    error="Missing new_name",
+                )
+            success, stdout, stderr = self._run_git_command(
+                ["remote", "rename", old_name, new_name],
+                require_repo=True,
+                cwd=repo_state.root,
+            )
+            if success:
+                return ActionResult(
+                    status=ActionStatus.SUCCESS,
+                    message=f"Git remote renamed: {old_name} -> {new_name}",
+                    data={"old_name": old_name, "new_name": new_name, "output": stdout},
+                )
+            return ActionResult(
+                status=ActionStatus.FAILURE,
+                message=f"Failed to rename git remote: {old_name}",
+                error=stderr,
+            )
+        
+        # Handle show operation
+        if operation == "show":
+            success, stdout, stderr = self._run_git_command(
+                ["remote", "show", name],
+                require_repo=True,
+                cwd=repo_state.root,
+            )
+            if success:
+                return ActionResult(
+                    status=ActionStatus.SUCCESS,
+                    message=f"Git remote details for: {name}",
+                    data={"remote": name, "output": stdout},
+                )
+            return ActionResult(
+                status=ActionStatus.FAILURE,
+                message=f"Failed to show git remote: {name}",
+                error=stderr,
+            )
+        
+        # Handle set-url operation
+        if operation == "set-url":
+            url = params.get("url")
+            if not url:
+                return ActionResult(
+                    status=ActionStatus.FAILURE,
+                    message="Remote URL is required for set-url",
+                    error="Missing url",
+                )
+            success, stdout, stderr = self._run_git_command(
+                ["remote", "set-url", name, url],
+                require_repo=True,
+                cwd=repo_state.root,
+            )
+            if success:
+                return ActionResult(
+                    status=ActionStatus.SUCCESS,
+                    message=f"Git remote URL updated: {name}",
+                    data={"remote": name, "url": url, "output": stdout},
+                )
+            return ActionResult(
+                status=ActionStatus.FAILURE,
+                message=f"Failed to update git remote URL: {name}",
+                error=stderr,
+            )
+        
+        # Handle add operation (default)
         url = params.get("url")
-
         if not url:
             return ActionResult(
                 status=ActionStatus.FAILURE,

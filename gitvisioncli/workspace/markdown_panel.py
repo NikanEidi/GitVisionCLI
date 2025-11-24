@@ -13,15 +13,24 @@ from gitvisioncli.ui.colors import *
 
 logger = logging.getLogger(__name__)
 
-class MarkdownPanel:
+from gitvisioncli.ui.components.panel_component import PanelComponent, ComponentConfig
+
+class MarkdownPanel(PanelComponent):
     """
     Render markdown files with formatting.
+    
+    Refactored to use PanelComponent base class for modular architecture.
     """
     
     def __init__(self, width: int = 80):
+        # Initialize with ComponentConfig
+        config = ComponentConfig(width=width, height=24, enabled=True, visible=True)
+        super().__init__(config)
+        
         self.width = width
         self.content: Optional[str] = None
-        self.file_path: Optional[Path] = None
+        # Use base class file_path
+        self.set_file_path(None)
     
     # ----------------------------------------------------------
     # LOADING
@@ -30,21 +39,22 @@ class MarkdownPanel:
     def load_file(self, file_path: Path) -> bool:
         """Load file content into memory."""
         try:
-            self.file_path = file_path.resolve()
-            self.content = self.file_path.read_text(encoding='utf-8', errors='ignore')
-            logger.info(f"MarkdownPanel loaded: {self.file_path}")
+            resolved_path = file_path.resolve()
+            self.set_file_path(resolved_path)
+            self.content = resolved_path.read_text(encoding='utf-8', errors='ignore')
+            logger.info(f"MarkdownPanel loaded: {resolved_path}")
             return True
         except Exception as e:
             logger.error(f"Error loading markdown {file_path}: {e}")
             self.content = f"# Error loading file\n\nCould not read file: {file_path}\n\nReason: {e}"
-            self.file_path = None
+            self.set_file_path(None)
             return False
     
     def load_content(self, content: str, title: str = "Preview"):
         """Load raw string content into memory."""
         self.content = content
         # Create a dummy path for the header
-        self.file_path = Path(title) 
+        self.set_file_path(Path(title)) 
 
     # ----------------------------------------------------------
     # NATIVE PLAIN-TEXT RENDERER (for Dual-Panel UI)

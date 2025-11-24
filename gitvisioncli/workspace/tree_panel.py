@@ -21,12 +21,20 @@ import re
 
 logger = logging.getLogger(__name__)
 
-class TreePanel:
+from gitvisioncli.ui.components.panel_component import PanelComponent, ComponentConfig
+
+class TreePanel(PanelComponent):
     """
     Display colorized directory tree of the project.
+    
+    Refactored to use PanelComponent base class for modular architecture.
     """
     
     def __init__(self, base_dir: str, max_depth: int = 7, width: int = 80):
+        # Initialize with ComponentConfig
+        config = ComponentConfig(width=width, height=24, enabled=True, visible=True)
+        super().__init__(config)
+        
         self.base_dir = Path(base_dir).resolve()
         self.max_depth = max_depth
         self.width = width

@@ -18,6 +18,7 @@ from gitvisioncli.ui.colors import (
 )
 from gitvisioncli.ui.banner import get_terminal_width
 from typing import TYPE_CHECKING
+from gitvisioncli.ui.components.renderer_component import RendererComponent, ComponentConfig
 
 if TYPE_CHECKING:
     from gitvisioncli.workspace.right_panel import RightPanel
@@ -69,19 +70,39 @@ class DualPanelConfig:
 
 
 # ========================================================================
-# MAIN RENDERER
+# MAIN RENDERER - MODULAR OOP ARCHITECTURE
 # ========================================================================
 
-class DualPanelRenderer:
+class DualPanelRenderer(RendererComponent):
     """
+    Premium dual-panel renderer with modular OOP architecture.
+    
     Renders:
     - Header (3 lines)
     - Left panel (chat) | Right panel (workspace)
     - Input bar
+    
     Automatically clamps height to terminal height.
+    Preserves all original functionality while using component-based architecture.
     """
 
     def __init__(self, right_panel: "RightPanel", config: Optional[DualPanelConfig] = None):
+        """
+        Initialize the dual panel renderer.
+        
+        Args:
+            right_panel: Right panel component (workspace)
+            config: Optional configuration (uses defaults if not provided)
+        """
+        # Convert DualPanelConfig to ComponentConfig for base class
+        component_config = ComponentConfig(
+            width=config.total_width if config else get_terminal_width(),
+            height=24,  # Will be calculated dynamically
+            enabled=True,
+            visible=True
+        )
+        super().__init__(component_config)
+        
         self.right_panel = right_panel
         self.config = config or DualPanelConfig()
         self.left_width = 0
@@ -90,6 +111,36 @@ class DualPanelRenderer:
         self.right_panel.width = self.right_width
         if hasattr(self.right_panel, "tree_panel"):
             self.right_panel.tree_panel.width = self.right_width
+    
+    def _build_lines(self) -> None:
+        """Build render lines (called by base class render method)."""
+        # DualPanelRenderer uses a custom render() method with parameters
+        # This method is not used, but required by base class
+        pass
+    
+    def render(self, left_content_str: str = "", input_text: str = "", status_line: str = "") -> str:
+        """
+        Full render pipeline (maintains backward compatibility).
+        
+        The input_text argument is the *current* raw input buffer, which
+        will be wrapped into a multi-line input box at the bottom of the
+        frame. The overall frame height adjusts dynamically so borders
+        remain perfectly aligned.
+        """
+        self._calculate_widths()
+
+        # Right panel content
+        try:
+            right_lines = self.right_panel.render_as_lines()
+        except Exception as e:
+            logger.error(f"RightPanel render failed: {e}", exc_info=True)
+            right_lines = [f"PANEL ERROR: {e}"]
+
+        # Prepare left lines
+        left_lines = left_content_str.splitlines()
+
+        # Build the combined frame with height limits and optional status row
+        return self._render_frame(left_lines, right_lines, input_text, status_line)
 
     # --------------------------------------------------------------------
     # WIDTH CALC
@@ -115,32 +166,6 @@ class DualPanelRenderer:
         self.right_panel.width = self.right_width
         if hasattr(self.right_panel, "tree_panel"):
             self.right_panel.tree_panel.width = self.right_width
-
-    # --------------------------------------------------------------------
-    # PUBLIC RENDER
-    # --------------------------------------------------------------------
-    def render(self, left_content_str: str, input_text: str = "", status_line: str = "") -> str:
-        """
-        Full render pipeline.
-        The input_text argument is the *current* raw input buffer, which
-        will be wrapped into a multi-line input box at the bottom of the
-        frame. The overall frame height adjusts dynamically so borders
-        remain perfectly aligned.
-        """
-        self._calculate_widths()
-
-        # Right panel content
-        try:
-            right_lines = self.right_panel.render_as_lines()
-        except Exception as e:
-            logger.error(f"RightPanel render failed: {e}", exc_info=True)
-            right_lines = [f"PANEL ERROR: {e}"]
-
-        # Prepare left lines
-        left_lines = left_content_str.splitlines()
-
-        # Build the combined frame with height limits and optional status row
-        return self._render_frame(left_lines, right_lines, input_text, status_line)
 
     # --------------------------------------------------------------------
     # FRAME BUILDER

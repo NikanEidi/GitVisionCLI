@@ -12,6 +12,8 @@ from gitvisioncli.ui.glitch_effects import multi_flicker
 
 logger = logging.getLogger(__name__)
 
+from gitvisioncli.ui.components.panel_component import PanelComponent, ComponentConfig
+
 # Professional ASCII art that scales based on width
 def get_logo_for_width(width: int) -> List[str]:
     """Return ASCII logo scaled to available width."""
@@ -100,13 +102,19 @@ ESSENTIAL_COMMANDS = [
 ]
 
 
-class BannerPanel:
+class BannerPanel(PanelComponent):
     """
     Display banner with logo, commands, and help information.
     Fully responsive for dual-panel rendering.
+    
+    Refactored to use PanelComponent base class for modular architecture.
     """
     
     def __init__(self, width: int = 80):
+        # Initialize with ComponentConfig
+        config = ComponentConfig(width=width, height=24, enabled=True, visible=True)
+        super().__init__(config)
+        
         self.width = width
     
     def _strip_ansi(self, text: str) -> str:

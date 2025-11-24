@@ -1,20 +1,85 @@
 # gitvisioncli/features/code_review.py
+"""
+Code Review Plugin
+
+Modular plugin for code review functionality.
+Refactored to use plugin architecture.
+"""
+
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import json
 
+from gitvisioncli.plugins.base_plugin import BasePlugin, PluginMetadata
 
-class CodeReviewer:
+
+class CodeReviewPlugin(BasePlugin):
     """
-    GitVision – Code Review Module
+    GitVision – Code Review Plugin
+    
     Performs:
       - Full static analysis
       - Multi-language detection (30+)
       - JSON-structured review output
+    
+    Refactored to use modular plugin architecture.
     """
 
+    def __init__(self):
+        """Initialize code review plugin."""
+        metadata = PluginMetadata(
+            name="code_review",
+            version="1.0.0",
+            description="Advanced code review with multi-language support",
+            author="GitVisionCLI"
+        )
+        super().__init__(metadata)
+        self.chat = None
+    
+    def initialize(self, context: Dict[str, Any]) -> None:
+        """Initialize plugin with chat engine."""
+        self.chat = context.get("chat_engine")
+        if not self.chat:
+            raise ValueError("CodeReviewPlugin requires chat_engine in context")
+    
+    def cleanup(self) -> None:
+        """Cleanup plugin resources."""
+        self.chat = None
+    
+    def can_handle(self, command: str, context: Dict[str, Any]) -> bool:
+        """Check if plugin can handle code review command."""
+        return command.lower() in ("review", "code_review", "analyze_code")
+    
+    def handle_command(self, command: str, params: Dict[str, Any], context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Handle code review command."""
+        if not self.can_handle(command, context):
+            return None
+        
+        file_path = params.get("file_path")
+        if file_path:
+            # Async method - would need async handling in real implementation
+            return {"action": "review_file", "file_path": file_path}
+        
+        code_text = params.get("code_text")
+        if code_text:
+            return {"action": "review_text", "code_text": code_text}
+        
+        return None
+    
+    def get_commands(self) -> List[str]:
+        """Get commands this plugin handles."""
+        return ["review", "code_review", "analyze_code"]
+
+
+# Legacy compatibility - keep original class name
+class CodeReviewer:
+    """
+    Legacy CodeReviewer class for backward compatibility.
+    Wraps CodeReviewPlugin.
+    """
+    
     def __init__(self, chat_engine):
-        # This class depends on the ChatEngine to make its own AI calls
+        """Initialize legacy code reviewer."""
         self.chat = chat_engine
 
     async def review_file(self, file_path: str) -> Dict[str, Any]:

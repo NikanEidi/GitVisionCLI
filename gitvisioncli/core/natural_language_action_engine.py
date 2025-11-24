@@ -16,6 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Import file handlers
+from gitvisioncli.core.file_handlers import (
+    InsertHandler,
+    ReplaceHandler,
+    DeleteHandler,
+    AppendHandler,
+)
+
 
 @dataclass
 class ActionJSON:
@@ -39,9 +47,37 @@ class NaturalLanguageActionEngine:
     NEVER asks questions (unless no context exists at all).
     """
     
-    def __init__(self):
+    def __init__(self, use_modular_handlers: bool = True):
+        """
+        Initialize the natural language action engine.
+        
+        Args:
+            use_modular_handlers: If True, use the new modular handler system
+                                 (default: True for better extensibility)
+        """
         # Precompile regex patterns for performance
         self._init_patterns()
+        
+        # Initialize file operation handlers (legacy)
+        self.file_handlers = [
+            DeleteHandler(),    # Check delete first (most specific)
+            ReplaceHandler(),   # Then replace
+            InsertHandler(),    # Then insert
+            AppendHandler(),    # Finally append (least specific)
+        ]
+        
+        # Initialize modular command router (new system)
+        self.use_modular_handlers = use_modular_handlers
+        if use_modular_handlers:
+            try:
+                from gitvisioncli.core.command_router import CommandRouter
+                self.command_router = CommandRouter()
+            except ImportError:
+                # Fallback if modular system not available
+                self.use_modular_handlers = False
+                self.command_router = None
+        else:
+            self.command_router = None
     
     def _init_patterns(self):
         """Initialize all regex patterns for action detection."""
@@ -229,9 +265,37 @@ class NaturalLanguageActionEngine:
             r"\b(?:git\s+)?(?:pull|sync)\s*(?:from\s+(?:github|origin|remote))?\s*(?:origin\s+)?(?P<branch>[^\s]*)\b|\b(?:git\s+get\s+latest|get\s+latest\s+from\s+(?:github|origin|remote))\s*(?:origin\s+)?(?P<branch2>[^\s]*)\b", 
             re.IGNORECASE
         )
-        self._git_remote_re = re.compile(
+        # Git remote operations - comprehensive support
+        # Remote add - support "add remote", "set remote", "configure remote"
+        self._git_remote_add_re = re.compile(
+            r"\b(?:git\s+)?(?:remote\s+)?(?:add|set|configure)\s+(?:remote\s+)?(?P<name>[^\s]+)\s+(?:to\s+)?(?P<url>[^\s]+)\b", re.IGNORECASE
+        )
+        # Also support: "git remote add origin <url>"
+        self._git_remote_add_explicit_re = re.compile(
             r"\b(?:git\s+)?remote\s+add\s+(?P<name>[^\s]+)\s+(?P<url>[^\s]+)\b", re.IGNORECASE
         )
+        # Remote remove/rm - support "remove remote", "delete remote", "rm remote"
+        self._git_remote_remove_re = re.compile(
+            r"\b(?:git\s+)?(?:remote\s+)?(?:remove|rm|delete)\s+(?:remote\s+)?(?P<name>[^\s]+)\b", re.IGNORECASE
+        )
+        # Remote list/show all - support "list remotes", "show remotes", "list all remotes"
+        self._git_remote_list_re = re.compile(
+            r"\b(?:git\s+)?(?:remote\s+)?(?:list|show\s+all|show\s+remotes|list\s+remotes|list\s+all\s+remotes|-v)\b", re.IGNORECASE
+        )
+        # Remote rename - support "rename remote", "change remote name"
+        self._git_remote_rename_re = re.compile(
+            r"\b(?:git\s+)?(?:remote\s+)?(?:rename|change\s+name)\s+(?:remote\s+)?(?P<old>[^\s]+)\s+(?:to\s+)?(?P<new>[^\s]+)\b", re.IGNORECASE
+        )
+        # Remote set-url - support "update remote url", "change remote url"
+        self._git_remote_set_url_re = re.compile(
+            r"\b(?:git\s+)?(?:remote\s+)?(?:set-url|update\s+url|change\s+url)\s+(?:remote\s+)?(?P<name>[^\s]+)\s+(?:to\s+)?(?P<url>[^\s]+)\b", re.IGNORECASE
+        )
+        # Remote show (specific remote) - support "show remote", "remote info"
+        self._git_remote_show_re = re.compile(
+            r"\b(?:git\s+)?(?:remote\s+)?(?:show|info)\s+(?:remote\s+)?(?P<name>[^\s]+)\b", re.IGNORECASE
+        )
+        # Legacy: git remote add (backward compatibility)
+        self._git_remote_re = self._git_remote_add_explicit_re
         self._git_graph_re = re.compile(
             r"\b(?:git\s+)?(?:show\s+)?(?:graph|log\s+--graph)\b", re.IGNORECASE
         )
@@ -426,10 +490,42 @@ class NaturalLanguageActionEngine:
         
         # ============================================================
         # FILE OPERATIONS - Line-based (highest priority if active_file)
+        # Use modular handlers for powerful, flexible parsing
         # ============================================================
         if active_file:
-            # Delete single line (also handle broken grammar: "rm 10", "delete line1", "remove ln5")
-            match = self._remove_line_re.search(text) or self._broken_line_re.search(text) or self._remove_line_broken_re.search(text)
+            # Try modular command router first (if enabled)
+            if self.use_modular_handlers and self.command_router:
+                result = self.command_router.route(user_message, active_file)
+                if result:
+                    return result
+            
+            # Try all file handlers and pick the best match
+            best_handler = None
+            best_confidence = 0.0
+            best_result = None
+            
+            for handler in self.file_handlers:
+                can_handle_confidence = handler.can_handle(text, active_file.path)
+                # Only try parsing if handler can handle it (confidence > 0)
+                if can_handle_confidence > 0:
+                    result = handler.parse(text, active_file.path, user_message)
+                    # Compare parse confidence against best parse confidence
+                    if result.success and result.confidence > best_confidence:
+                        best_handler = handler
+                        best_confidence = result.confidence
+                        best_result = result
+            
+            # If we found a good match, use it
+            if best_result and best_confidence >= 0.7:
+                return ActionJSON(
+                    type=best_result.action_type,
+                    params=best_result.params
+                )
+            
+            # Fallback to legacy regex patterns for backward compatibility
+            # (Keep existing patterns as fallback)
+            # Delete single line (also handle broken grammar: "rm 10", "delete line1", "remove ln5", "delete 5", "remove 5")
+            match = self._remove_line_re.search(text) or self._remove_line_broken_re.search(text) or self._broken_line_re.search(text)
             if match:
                 line_num = int(match.group("line"))
                 return ActionJSON(
@@ -920,14 +1016,106 @@ class NaturalLanguageActionEngine:
                 params=params
             )
         
-        # Git remote add
-        match = self._git_remote_re.search(text)
+        # Git remote operations - check in order of specificity
+        # Remote remove/rm (check before add to avoid false matches)
+        match = self._git_remote_remove_re.search(text)
+        if match:
+            name = match.group("name")
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "operation": "remove",
+                    "name": name
+                }
+            )
+        
+        # Remote rename
+        match = self._git_remote_rename_re.search(text)
+        if match:
+            old_name = match.group("old")
+            new_name = match.group("new")
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "operation": "rename",
+                    "old_name": old_name,
+                    "new_name": new_name
+                }
+            )
+        
+        # Remote set-url
+        match = self._git_remote_set_url_re.search(text)
         if match:
             name = match.group("name")
             url = match.group("url")
             return ActionJSON(
                 type="GitRemote",
                 params={
+                    "operation": "set-url",
+                    "name": name,
+                    "url": url
+                }
+            )
+        
+        # Remote list/show all (check BEFORE show to avoid false matches)
+        # This must come before show to prevent "show remotes" from matching as show operation
+        match = self._git_remote_list_re.search(text)
+        if match:
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "operation": "list"
+                }
+            )
+        
+        # Remote show (specific remote) - check AFTER list to avoid false positives
+        # Pattern is more restrictive to exclude "remotes" and "all" as remote names
+        match = self._git_remote_show_re.search(text)
+        if match:
+            name = match.group("name")
+            # Exclude common list keywords that might be captured as remote names
+            if name.lower() in ("remotes", "all"):
+                # This was likely meant to be a list operation, but we already checked that
+                # Return an error action instead of silently skipping
+                return ActionJSON(
+                    type="GitRemote",
+                    params={
+                        "operation": "show",
+                        "name": name,
+                        "error": f"'{name}' is not a valid remote name. Use 'list' to see all remotes."
+                    }
+                )
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "operation": "show",
+                    "name": name
+                }
+            )
+        
+        # Remote add (default operation) - try explicit pattern first
+        match = self._git_remote_add_explicit_re.search(text)
+        if match:
+            name = match.group("name")
+            url = match.group("url")
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "operation": "add",
+                    "name": name,
+                    "url": url
+                }
+            )
+        
+        # Try general add pattern
+        match = self._git_remote_add_re.search(text)
+        if match:
+            name = match.group("name")
+            url = match.group("url")
+            return ActionJSON(
+                type="GitRemote",
+                params={
+                    "operation": "add",
                     "name": name,
                     "url": url
                 }

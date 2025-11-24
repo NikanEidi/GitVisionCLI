@@ -1184,6 +1184,23 @@ Output the raw {file_type_desc} content now:"""
                                     right_panel.panel_manager.set_mode(PanelMode.EDITOR)
                                 except Exception as load_err:
                                     logger.debug(f"Failed to open modified file {last_path}: {load_err}")
+                    
+                    # CRITICAL FIX: If editor already has a file open and that file was modified by an action,
+                    # reload it from disk to show the actual content (not action result messages)
+                    if enable_workspace and right_panel and right_panel.editor_panel.file_path:
+                        editor_file = right_panel.editor_panel.file_path
+                        last_modified = engine.get_last_modified_path()
+                        if last_modified and Path(last_modified).resolve() == editor_file.resolve():
+                            # The file in the editor was just modified by an action
+                            # Reload from disk to show actual content, not action result messages
+                            try:
+                                # Only reload if editor is not marked as modified (has unsaved changes)
+                                # This prevents overwriting user's unsaved edits
+                                if not right_panel.editor_panel.is_modified:
+                                    right_panel.editor_panel.load_file(editor_file)
+                                    logger.debug(f"Reloaded editor file {editor_file} after action completion")
+                            except Exception as reload_err:
+                                logger.debug(f"Failed to reload editor file after action: {reload_err}")
                 except Exception as editor_sync_err:
                     logger.debug(f"Editor sync after AI response skipped: {editor_sync_err}")
                 finally:

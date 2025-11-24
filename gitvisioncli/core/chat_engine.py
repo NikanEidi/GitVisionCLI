@@ -957,7 +957,7 @@ simple natural language commands may already be handled by the direct engine."""
             # Track last modified for UI sync
             self._track_last_modified(direct_action, result)
             
-            # Yield result
+            # Yield result to chat (not to editor - editor will reload from disk)
             if result.status == ActionStatus.SUCCESS:
                 yield f"✓ {result.message}\n"
             elif result.status == ActionStatus.DRY_RUN:
@@ -1147,6 +1147,8 @@ simple natural language commands may already be handled by the direct engine."""
                         content=json.dumps(result_dict),
                     )
 
+                    # Yield action result messages to chat, but don't stream them to editor
+                    # Editor will be reloaded from disk after actions complete to show actual file content
                     if result_dict.get("status") == "success":
                         yield f"✓ {result_dict.get('message')}\n"
                     else:
