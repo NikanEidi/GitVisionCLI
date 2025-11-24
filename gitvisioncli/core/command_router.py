@@ -86,7 +86,16 @@ class CommandRouter:
             context["active_file"] = active_file.path if isinstance(active_file, str) else active_file.path
         
         # Try to find best handler
+        # Pass full_message to handlers for multiline content extraction
         result = self.manager.find_best_handler(user_message, context)
+        
+        if result and result.success:
+            # If handler didn't get full_message, try parsing again with it
+            if "\n" in user_message and result.params and not any(
+                result.params.get(k) for k in ["content", "text", "block"] if result.params.get(k)
+            ):
+                # Retry with full message for content extraction
+                result = self.manager.find_best_handler(user_message, context)
         
         if result and result.success:
             return ActionJSON(

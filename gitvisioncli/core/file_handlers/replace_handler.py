@@ -8,7 +8,7 @@ Handles all replace operations:
 """
 
 import re
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 from gitvisioncli.core.file_handlers.base import FileHandler, HandlerResult, FileHandlerPriority
 
 
@@ -48,7 +48,7 @@ class ReplaceHandler(FileHandler):
             ),
         ]
     
-    def can_handle(self, text: str, active_file: Optional[str] = None) -> float:
+    def can_handle(self, text: str, context: Optional[Dict[str, Any]] = None) -> float:
         """Check if this is a replace operation."""
         text_lower = text.lower()
         
@@ -70,8 +70,15 @@ class ReplaceHandler(FileHandler):
         
         return 0.0
     
-    def parse(self, text: str, active_file: Optional[str] = None, full_message: Optional[str] = None) -> HandlerResult:
+    def parse(self, text: str, context: Optional[Dict[str, Any]] = None, full_message: Optional[str] = None) -> HandlerResult:
         """Parse replace instruction."""
+        # Extract active_file from context
+        active_file = None
+        if context:
+            active_file = context.get("active_file")
+            if isinstance(active_file, dict):
+                active_file = active_file.get("path") or active_file.get("active_file")
+        
         if not active_file:
             return HandlerResult(
                 success=False,
@@ -96,7 +103,7 @@ class ReplaceHandler(FileHandler):
                     "path": active_file,
                     "start_line": start,
                     "end_line": end,
-                    "new_text": content
+                    "block": content
                 },
                 confidence=0.95
             )
@@ -104,7 +111,18 @@ class ReplaceHandler(FileHandler):
         # Check for single line replacement
         line_num = self.extract_line_number(text)
         if line_num:
+            # Extract content after "with" or "to"
             content = self.extract_content(text, full_message)
+            if not content:
+                # Try to extract from pattern "replace line N with X"
+                pattern_match = re.search(
+                    r'\breplace\s+line\s*\d+\s+with\s+(.+?)(?:\s+in\s+|\s*$)',
+                    text,
+                    re.IGNORECASE | re.DOTALL
+                )
+                if pattern_match:
+                    content = pattern_match.group(1).strip()
+            
             if not content:
                 return HandlerResult(
                     success=False,
@@ -113,12 +131,11 @@ class ReplaceHandler(FileHandler):
             
             return HandlerResult(
                 success=True,
-                action_type="ReplaceBlock",
+                action_type="ReplaceLine",
                 params={
                     "path": active_file,
-                    "start_line": line_num,
-                    "end_line": line_num,
-                    "new_text": content
+                    "line_number": line_num,
+                    "text": content
                 },
                 confidence=0.95
             )

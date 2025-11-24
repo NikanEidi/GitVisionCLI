@@ -631,7 +631,7 @@ pip install --upgrade -e .
 
 - 📖 [COMMANDS.md](COMMANDS.md) - Complete command reference (all commands)
 - 🎯 [FEATURES.md](FEATURES.md) - Advanced features overview
-- 🧪 [RUN_AND_TEST.md](../RUN_AND_TEST.md) - Comprehensive testing guide
+- 🧪 [RUN_AND_TEST.md](RUN_AND_TEST.md) - Comprehensive testing guide
 - 📝 [CHANGELOG.md](../CHANGELOG.md) - Version history and changes
 
 ### **Advanced Topics**

@@ -349,7 +349,7 @@ create a test file for app.py
 | **[QUICKSTART.md](docs/QUICKSTART.md)** | 5-minute getting started guide | [Read →](docs/QUICKSTART.md) |
 | **[COMMANDS.md](docs/COMMANDS.md)** | Complete command reference with examples | [Read →](docs/COMMANDS.md) |
 | **[FEATURES.md](docs/FEATURES.md)** | In-depth feature documentation | [Read →](docs/FEATURES.md) |
-| **[RUN_AND_TEST.md](RUN_AND_TEST.md)** | Comprehensive testing and validation guide | [Read →](RUN_AND_TEST.md) |
+| **[RUN_AND_TEST.md](docs/RUN_AND_TEST.md)** | Comprehensive testing and validation guide | [Read →](docs/RUN_AND_TEST.md) |
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute to GitVisionCLI | [Read →](CONTRIBUTING.md) |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and changes | [Read →](CHANGELOG.md) |
 

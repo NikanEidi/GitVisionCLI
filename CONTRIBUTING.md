@@ -433,7 +433,7 @@ When adding features, update:
 - `docs/FEATURES.md` - For feature details
 - `docs/QUICKSTART.md` - If it affects getting started
 - `CHANGELOG.md` - Always!
-- `RUN_AND_TEST.md` - If it affects testing
+- `docs/RUN_AND_TEST.md` - If it affects testing
 
 **Documentation Standards:**
 - Clear, concise descriptions

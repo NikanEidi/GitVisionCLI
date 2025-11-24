@@ -1113,7 +1113,7 @@ fix this error
 
 - [FEATURES.md](FEATURES.md) - Detailed feature documentation
 - [QUICKSTART.md](QUICKSTART.md) - Getting started guide
-- [RUN_AND_TEST.md](../RUN_AND_TEST.md) - Testing guide
+- [RUN_AND_TEST.md](RUN_AND_TEST.md) - Testing guide
 
 ---
 

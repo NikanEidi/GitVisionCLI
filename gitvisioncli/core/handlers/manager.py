@@ -55,9 +55,10 @@ class HandlerManager:
             
             if confidence > best_confidence:
                 # Try to parse with this handler
+                # Pass full text as full_message for multiline content extraction
                 result = handler.parse(text, context, text)
                 
-                if result.success and result.confidence > best_confidence:
+                if result and result.success and result.confidence > best_confidence:
                     best_result = result
                     best_confidence = result.confidence
         
@@ -93,7 +94,7 @@ class HandlerManager:
             confidence = handler.can_handle(text, context)
             if confidence > 0:
                 result = handler.parse(text, context, text)
-                if result.success:
+                if result and result.success:
                     results.append(result)
         
         # Sort by confidence (highest first)

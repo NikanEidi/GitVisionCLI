@@ -9,7 +9,7 @@ Handles all insert operations:
 """
 
 import re
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from gitvisioncli.core.file_handlers.base import FileHandler, HandlerResult, FileHandlerPriority
 
 
@@ -43,6 +43,16 @@ class InsertHandler(FileHandler):
                 r'\b(insert|add|write|put|place|prepend)\s+(?:at|to)\s+(?:the\s+)?(?:top|beginning|start|head)\b',
                 re.IGNORECASE
             ),
+            # Variations: "add X at top", "insert X to beginning"
+            re.compile(
+                r'\b(insert|add|write|put|place|prepend)\s+(.+?)\s+(?:at|to)\s+(?:the\s+)?(?:top|beginning|start|head)\b',
+                re.IGNORECASE | re.DOTALL
+            ),
+            # Match "prepend X" (without "at top")
+            re.compile(
+                r'\bprepend\s+(.+?)(?:\s|$)',
+                re.IGNORECASE | re.DOTALL
+            ),
             # Insert in line: "add X in line 5", "insert X into line 5"
             re.compile(
                 r'\b(insert|add|write|put)\s+(.+?)\s+in\s+line\s*(\d+)\b',
@@ -53,16 +63,24 @@ class InsertHandler(FileHandler):
                 r'\b(insert|add|write|put)\s+line\s*(\d+)\s+with\s+(.+?)(?:\s+in\s+|\s*$)',
                 re.IGNORECASE | re.DOTALL
             ),
-            # Natural variations: "put X at line 5", "write X on line 5"
+            # Natural variations: "put X at line 5", "write X on line 5", "place X at line 5"
             re.compile(
                 r'\b(insert|add|write|put|place)\s+(.+?)\s+(?:at|on|in)\s+line\s*(\d+)\b',
-                re.IGNORECASE
+                re.IGNORECASE | re.DOTALL
             ),
         ]
     
-    def can_handle(self, text: str, active_file: Optional[str] = None) -> float:
+    def can_handle(self, text: str, context: Optional[Dict[str, Any]] = None) -> float:
         """Check if this is an insert operation."""
         text_lower = text.lower()
+        
+        # Only handle if there's an active file (context-aware)
+        if not context or not context.get("active_file"):
+            return 0.0
+        
+        # Make sure it's not a git command
+        if text_lower.startswith('git '):
+            return 0.0  # Git command, not file operation
         
         # High confidence keywords
         if any(kw in text_lower for kw in ['insert', 'add', 'put', 'place', 'write']):
@@ -77,7 +95,7 @@ class InsertHandler(FileHandler):
                 'line with', 'line:', 'line '
             ]
             if any(ind in text_lower for ind in insert_indicators):
-                return 0.9
+                return 0.95  # Higher confidence when active file exists
         
         # Check patterns
         for pattern in self.patterns:
@@ -86,8 +104,16 @@ class InsertHandler(FileHandler):
         
         return 0.0
     
-    def parse(self, text: str, active_file: Optional[str] = None, full_message: Optional[str] = None) -> HandlerResult:
+    def parse(self, text: str, context: Optional[Dict[str, Any]] = None, full_message: Optional[str] = None) -> HandlerResult:
         """Parse insert instruction."""
+        # Extract active_file from context
+        active_file = None
+        if context:
+            active_file = context.get("active_file")
+            if isinstance(active_file, dict):
+                # Handle case where active_file is a dict with 'path' key
+                active_file = active_file.get("path") or active_file.get("active_file")
+        
         if not active_file:
             return HandlerResult(
                 success=False,
@@ -100,14 +126,43 @@ class InsertHandler(FileHandler):
         line_num = None
         position = "after"  # default
         
-        # Check for "at top" / "at beginning"
+        # Check for "at top" / "at beginning" / "at start"
         if re.search(r'\b(?:at|to)\s+(?:the\s+)?(?:top|beginning|start|head)\b', text_lower):
+            # Extract content - try to get content before "at top"
+            content = self.extract_content(text, full_message)
+            if not content:
+                # Try pattern: "add X at top" -> extract X
+                content_match = re.search(
+                    r'\b(?:add|insert|write|put|place|prepend)\s+(.+?)\s+(?:at|to)\s+(?:the\s+)?(?:top|beginning|start|head)\b',
+                    text,
+                    re.IGNORECASE | re.DOTALL
+                )
+                if content_match:
+                    content = content_match.group(1).strip()
             return HandlerResult(
                 success=True,
                 action_type="InsertAtTop",
                 params={
                     "path": active_file,
-                    "text": self.extract_content(text, full_message) or ""
+                    "text": content or ""
+                },
+                confidence=0.95
+            )
+        
+        # Check for standalone "prepend X" (without "at top")
+        if re.search(r'^prepend\s+', text_lower):
+            content = self.extract_content(text, full_message)
+            if not content:
+                # Try pattern: "prepend X" -> extract X
+                content_match = re.search(r'^prepend\s+(.+?)(?:\s|$)', text, re.IGNORECASE | re.DOTALL)
+                if content_match:
+                    content = content_match.group(1).strip()
+            return HandlerResult(
+                success=True,
+                action_type="InsertAtTop",
+                params={
+                    "path": active_file,
+                    "text": content or ""
                 },
                 confidence=0.95
             )
@@ -139,26 +194,77 @@ class InsertHandler(FileHandler):
                 error="Could not determine line number"
             )
         
-        # Extract content
-        content = self.extract_content(text, full_message)
+        # Extract content - try multiple methods
+        content = None
+        
+        # First, check if this is a multiline command (has ":" and newlines)
+        if full_message and "\n" in full_message and ":" in full_message.split("\n", 1)[0]:
+            # Multiline format: "insert at line 10:\ncontent..."
+            first_line = full_message.split("\n", 1)[0]
+            if ":" in first_line:
+                # Extract everything after the first line
+                content = "\n".join(full_message.split("\n")[1:]).strip()
+        
+        # If not multiline, try to extract content before "at line", "in line", etc.
+        # Pattern: "insert import os at line 1" -> extract "import os"
         if not content:
-            # Try to extract from patterns
+            content_match = re.search(
+                r'\b(?:insert|add|write|put|place)\s+(.+?)\s+(?:at|in|on|before|after)\s+line',
+                text,
+                re.IGNORECASE | re.DOTALL
+            )
+            if content_match:
+                potential = content_match.group(1).strip()
+                # Make sure it's not just "at" or a preposition
+                if potential and potential.lower() not in ['at', 'in', 'on', 'before', 'after']:
+                    content = potential
+                    # Clean up any trailing punctuation
+                    content = re.sub(r'[.,;:!?]+$', '', content).strip()
+        
+        # If no content from pattern, try extract_content method
+        if not content:
+            content = self.extract_content(text, full_message)
+        
+        # If still no content, try to extract from patterns
+        if not content:
             for pattern in self.patterns:
                 match = pattern.search(text)
                 if match:
                     # Try to get content from match groups
                     if len(match.groups()) >= 3:
-                        content = match.group(3).strip()
-                    elif len(match.groups()) >= 2:
-                        # Might be content before "in line"
-                        content_match = re.search(
-                            r'(.+?)\s+(?:in|at|on)\s+line',
-                            text,
-                            re.IGNORECASE
-                        )
-                        if content_match:
-                            content = content_match.group(1).strip()
+                        potential = match.group(3).strip()
+                        # Make sure it's not just a number (line number)
+                        if potential and not potential.isdigit():
+                            content = potential
                     break
+        
+        # If still no content and we have full_message, try extracting from multiline
+        if not content and full_message and "\n" in full_message:
+            # Check if the command has ":" at the end of first line (multiline indicator)
+            first_line = full_message.split("\n", 1)[0]
+            if ":" in first_line and ("insert" in first_line.lower() or "add" in first_line.lower()):
+                # Extract everything after the first line (command line)
+                lines = full_message.split("\n")
+                if len(lines) > 1:
+                    # Skip the command line and get the rest
+                    content = "\n".join(lines[1:]).strip()
+            else:
+                # Try to extract from after ":" if present
+                if ":" in text:
+                    # Split on first ":" only
+                    parts = full_message.split(":", 1)
+                    if len(parts) > 1:
+                        potential = parts[1].strip()
+                        # If it's multiline, take everything after the colon
+                        if "\n" in potential:
+                            content = potential
+                        else:
+                            # Single line after colon - might be part of command, check if there's more
+                            if len(full_message.split("\n")) > 1:
+                                # There are more lines, so take everything after first line
+                                content = "\n".join(full_message.split("\n")[1:]).strip()
+                            else:
+                                content = potential
         
         if not content:
             return HandlerResult(
@@ -167,12 +273,18 @@ class InsertHandler(FileHandler):
             )
         
         # Determine action type based on position
+        # Map to valid ActionType enum values
         if position == "before":
             action_type = "InsertBeforeLine"
         elif position == "after":
             action_type = "InsertAfterLine"
         else:  # position == "at"
-            action_type = "InsertAtLine"
+            # For "at line N", if N is 1, insert at top (before line 1)
+            # Otherwise, insert before the line (pushes line N down)
+            if line_num == 1:
+                action_type = "InsertAtTop"
+            else:
+                action_type = "InsertBeforeLine"
         
         return HandlerResult(
             success=True,

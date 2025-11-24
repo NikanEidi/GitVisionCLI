@@ -36,12 +36,12 @@ logger = logging.getLogger(__name__)
 # Full ANSI sequences: \x1b[ or \033[ followed by digits/semicolons and command char
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
 # Corrupted ANSI sequences (missing ESC prefix)
-# Matches and removes entirely:
-# - [number;m (bracket is part of corruption)
-# - (number;m (paren is part of corruption)
-# - standalone number;m (not preceded by bracket/paren)
-# This handles the main case: [38;5;46m becomes empty string
-CORRUPTED_ANSI_RE = re.compile(r"\[[0-9;]+m|\([0-9;]+m|[0-9;]+m")
+# Matches and removes:
+# - [number;m (bracket is part of corruption, remove entirely)
+# - standalone number;m (remove entirely)
+# Note: We don't match (number;m because ( might be valid syntax (e.g., function calls)
+# The standalone number;m pattern will catch cases like print(38;5;46m"text")
+CORRUPTED_ANSI_RE = re.compile(r"\[[0-9;]+m|[0-9;]+m")
 
 
 def _strip_ansi(text: str) -> str:

@@ -1189,12 +1189,23 @@ simple natural language commands may already be handled by the direct engine."""
                 if d and getattr(d, "content", None):
                     content = d.content
                     follow_txt += content
-                    # Stream to editor if available and in editor mode
+                    # Stream to editor if available, but skip action result messages
+                    # Action result messages (like "✓ Inserted block...") should only go to chat, not editor
+                    # Editor will be reloaded from disk after actions complete to show actual file content
                     if editor_panel and hasattr(editor_panel, 'write_stream'):
-                        try:
-                            editor_panel.write_stream(content)
-                        except Exception as e:
-                            logger.debug(f"Editor streaming failed: {e}")
+                        # Skip streaming if content looks like an action result message
+                        # These messages contain patterns like "✓", "Inserted", "block at", etc.
+                        is_action_message = (
+                            "✓" in content or "✗" in content or
+                            "Inserted block" in follow_txt or
+                            "block at" in follow_txt or
+                            "block into" in follow_txt
+                        )
+                        if not is_action_message:
+                            try:
+                                editor_panel.write_stream(content)
+                            except Exception as e:
+                                logger.debug(f"Editor streaming failed: {e}")
                     yield content
 
             if follow_txt:
@@ -1257,12 +1268,21 @@ simple natural language commands may already be handled by the direct engine."""
                 ):
                     if chunk:
                         assistant_text += chunk
-                        # Stream to editor if available
+                        # Stream to editor if available, but skip action result messages
+                        # Action result messages should only go to chat, not editor
                         if editor_panel and hasattr(editor_panel, 'write_stream'):
-                            try:
-                                editor_panel.write_stream(chunk)
-                            except Exception:
-                                pass
+                            # Skip streaming if content looks like an action result message
+                            is_action_message = (
+                                "✓" in chunk or "✗" in chunk or
+                                "Inserted block" in assistant_text or
+                                "block at" in assistant_text or
+                                "block into" in assistant_text
+                            )
+                            if not is_action_message:
+                                try:
+                                    editor_panel.write_stream(chunk)
+                                except Exception:
+                                    pass
                         yield chunk
             elif provider == "claude":
                 async for chunk in self._stream_claude(
@@ -1272,12 +1292,21 @@ simple natural language commands may already be handled by the direct engine."""
                 ):
                     if chunk:
                         assistant_text += chunk
-                        # Stream to editor if available
+                        # Stream to editor if available, but skip action result messages
+                        # Action result messages should only go to chat, not editor
                         if editor_panel and hasattr(editor_panel, 'write_stream'):
-                            try:
-                                editor_panel.write_stream(chunk)
-                            except Exception:
-                                pass
+                            # Skip streaming if content looks like an action result message
+                            is_action_message = (
+                                "✓" in chunk or "✗" in chunk or
+                                "Inserted block" in assistant_text or
+                                "block at" in assistant_text or
+                                "block into" in assistant_text
+                            )
+                            if not is_action_message:
+                                try:
+                                    editor_panel.write_stream(chunk)
+                                except Exception:
+                                    pass
                         yield chunk
             elif provider == "ollama":
                 async for chunk in self._stream_ollama(
@@ -1287,12 +1316,21 @@ simple natural language commands may already be handled by the direct engine."""
                 ):
                     if chunk:
                         assistant_text += chunk
-                        # Stream to editor if available
+                        # Stream to editor if available, but skip action result messages
+                        # Action result messages should only go to chat, not editor
                         if editor_panel and hasattr(editor_panel, 'write_stream'):
-                            try:
-                                editor_panel.write_stream(chunk)
-                            except Exception:
-                                pass
+                            # Skip streaming if content looks like an action result message
+                            is_action_message = (
+                                "✓" in chunk or "✗" in chunk or
+                                "Inserted block" in assistant_text or
+                                "block at" in assistant_text or
+                                "block into" in assistant_text
+                            )
+                            if not is_action_message:
+                                try:
+                                    editor_panel.write_stream(chunk)
+                                except Exception:
+                                    pass
                         yield chunk
             else:
                 # Fallback to non-streaming for unknown providers

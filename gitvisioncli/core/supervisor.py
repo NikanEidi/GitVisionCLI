@@ -746,12 +746,12 @@ class ActionSupervisor:
         # - Also handle partial/corrupted sequences like 38;5;46m (missing ESC and bracket prefix)
         ansi_re = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\033\[[0-9;]*[a-zA-Z]")
         # Pattern for corrupted ANSI sequences (missing ESC prefix)
-        # Matches and removes entirely:
-        # - [number;m (bracket is part of corruption)
-        # - (number;m (paren is part of corruption)  
-        # - standalone number;m (not preceded by bracket/paren)
-        # This handles the main case: [38;5;46m becomes empty string
-        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|\([0-9;]+m|[0-9;]+m")
+        # Matches and removes:
+        # - [number;m (bracket is part of corruption, remove entirely)
+        # - standalone number;m (remove entirely)
+        # Note: We don't match (number;m because ( might be valid syntax (e.g., function calls)
+        # The standalone number;m pattern will catch cases like print(38;5;46m"text")
+        corrupted_ansi_re = re.compile(r"\[[0-9;]+m|[0-9;]+m")
         
         content = (
             params.get("content")

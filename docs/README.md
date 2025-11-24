@@ -16,7 +16,7 @@
 
 ### **Command References**
 
-2. **[COMMAND_SHEET.md](../COMMAND_SHEET.md)** - 📋 Complete command reference
+2. **[COMMAND_SHEET.md](COMMAND_SHEET.md)** - 📋 Complete command reference
    - All commands in one place
    - Workspace & panel commands
    - Natural language commands
@@ -52,21 +52,32 @@
 
 ### **Guides**
 
-6. **[RUN_AND_TEST.md](../RUN_AND_TEST.md)** - 🧪 Testing and usage guide
+6. **[RUN_AND_TEST.md](RUN_AND_TEST.md)** - 🧪 Testing and usage guide
    - Installation steps
    - Testing checklist
    - Quick test script
    - Troubleshooting
+
+7. **[SYSTEM_STATUS.md](SYSTEM_STATUS.md)** - 📊 System status report
+   - Production readiness status
+   - Completed subsystems
+   - Architecture overview
+   - Dependencies and installation
+
+8. **[PUBLISH_READY.md](PUBLISH_READY.md)** - ✅ Publish readiness checklist
+   - Feature completion status
+   - UI/UX consistency
+   - Code quality verification
 
 ---
 
 ## 🎯 **Quick Links**
 
 - **New User?** → Start with [QUICKSTART.md](QUICKSTART.md)
-- **Need Commands?** → Check [COMMAND_SHEET.md](../COMMAND_SHEET.md)
+- **Need Commands?** → Check [COMMAND_SHEET.md](COMMAND_SHEET.md)
 - **Want Details?** → Read [COMMANDS.md](COMMANDS.md)
 - **Explore Features?** → See [FEATURES.md](FEATURES.md)
-- **Testing?** → Follow [RUN_AND_TEST.md](../RUN_AND_TEST.md)
+- **Testing?** → Follow [RUN_AND_TEST.md](RUN_AND_TEST.md)
 
 ---
 
@@ -77,13 +88,15 @@ docs/
 ├── README.md (this file)
 ├── QUICKSTART.md          # Getting started guide
 ├── COMMANDS.md            # Detailed command docs
+├── COMMAND_SHEET.md       # Complete command reference
 ├── FEATURES.md            # Feature overview
-└── NATURAL_LANGUAGE_ACTION_ENGINE.md  # NLAE docs
+├── NATURAL_LANGUAGE_ACTION_ENGINE.md  # NLAE docs
+├── RUN_AND_TEST.md        # Testing guide
+├── SYSTEM_STATUS.md       # System status report
+└── PUBLISH_READY.md       # Publish readiness checklist
 
 Root/
-├── COMMAND_SHEET.md       # Complete command reference
 ├── README.md              # Main project documentation
-├── RUN_AND_TEST.md        # Testing guide
 ├── CONTRIBUTING.md        # Contribution guidelines
 ├── CHANGELOG.md           # Version history
 └── PROJECT_STRUCTURE.md   # Project structure
@@ -96,10 +109,11 @@ Root/
 ### **I want to...**
 
 - **Get started quickly** → [QUICKSTART.md](QUICKSTART.md)
-- **See all commands** → [COMMAND_SHEET.md](../COMMAND_SHEET.md)
+- **See all commands** → [COMMAND_SHEET.md](COMMAND_SHEET.md)
 - **Learn about features** → [FEATURES.md](FEATURES.md)
 - **Understand NLAE** → [NATURAL_LANGUAGE_ACTION_ENGINE.md](NATURAL_LANGUAGE_ACTION_ENGINE.md)
-- **Test the app** → [RUN_AND_TEST.md](../RUN_AND_TEST.md)
+- **Test the app** → [RUN_AND_TEST.md](RUN_AND_TEST.md)
+- **Check system status** → [SYSTEM_STATUS.md](SYSTEM_STATUS.md)
 - **Contribute** → [CONTRIBUTING.md](../CONTRIBUTING.md)
 
 ---

@@ -17,10 +17,12 @@ from gitvisioncli.core.handlers.manager import HandlerManager
 # Import all handler categories
 from gitvisioncli.core.handlers.file_handlers import FileHandlerCategory
 from gitvisioncli.core.handlers.git_handlers import GitHandlerCategory
-from gitvisioncli.core.handlers.github_handlers import GitHubHandlerCategory
-from gitvisioncli.core.handlers.folder_handlers import FolderHandlerCategory
-from gitvisioncli.core.handlers.search_handlers import SearchHandlerCategory
-from gitvisioncli.core.handlers.shell_handlers import ShellHandlerCategory
+from gitvisioncli.core.handlers.github_handlers import (
+    GitHubHandlerCategory,
+    FolderHandlerCategory,
+    SearchHandlerCategory,
+    ShellHandlerCategory,
+)
 
 __all__ = [
     "BaseHandler",

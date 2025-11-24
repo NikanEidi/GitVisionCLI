@@ -8,7 +8,7 @@ Handles all delete operations:
 """
 
 import re
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from gitvisioncli.core.file_handlers.base import FileHandler, HandlerResult, FileHandlerPriority
 
 
@@ -53,20 +53,30 @@ class DeleteHandler(FileHandler):
             ),
         ]
     
-    def can_handle(self, text: str, active_file: Optional[str] = None) -> float:
+    def can_handle(self, text: str, context: Optional[Dict[str, Any]] = None) -> float:
         """Check if this is a delete operation."""
         text_lower = text.lower()
+        
+        # Only handle if there's an active file (context-aware)
+        if not context or not context.get("active_file"):
+            return 0.0
         
         # High confidence keywords
         delete_keywords = ['delete', 'remove', 'rm', 'erase', 'drop', 'clear']
         if any(kw in text_lower for kw in delete_keywords):
             # Check if it's clearly a delete (not insert/replace)
-            if any(kw in text_lower for kw in ['insert', 'add', 'replace', 'update', 'with', 'to']):
+            # But allow "to" if it's part of a line range pattern like "lines X to Y"
+            is_line_range_to = bool(re.search(r'\blines?\s+\d+\s+to\s+\d+', text_lower))
+            exclude_keywords = ['insert', 'add', 'replace', 'update', 'with']
+            if not is_line_range_to:
+                exclude_keywords.append('to')
+            
+            if any(kw in text_lower for kw in exclude_keywords):
                 return 0.0  # Likely a different operation
             
             # Check for delete indicators
             if 'line' in text_lower or re.search(r'\b(rm|dl)\s+\d+', text_lower):
-                return 0.9
+                return 0.95  # Higher confidence when active file exists
         
         # Check patterns
         for pattern in self.patterns:
@@ -75,8 +85,15 @@ class DeleteHandler(FileHandler):
         
         return 0.0
     
-    def parse(self, text: str, active_file: Optional[str] = None, full_message: Optional[str] = None) -> HandlerResult:
+    def parse(self, text: str, context: Optional[Dict[str, Any]] = None, full_message: Optional[str] = None) -> HandlerResult:
         """Parse delete instruction."""
+        # Extract active_file from context
+        active_file = None
+        if context:
+            active_file = context.get("active_file")
+            if isinstance(active_file, dict):
+                active_file = active_file.get("path") or active_file.get("active_file")
+        
         if not active_file:
             return HandlerResult(
                 success=False,

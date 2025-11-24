@@ -1,121 +1,56 @@
-# 📋 GitVisionCLI - Complete Command Sheet
+# 📋 GitVisionCLI - Complete Command Reference
 
-**The Ultimate Reference Guide for All GitVisionCLI Commands**
+**The Ultimate Command Sheet - All Commands in One Place**
 
----
+<div align="center">
 
-## 📑 **Table of Contents**
+[![Commands](https://img.shields.io/badge/Commands-100%2B-blue.svg)](https://github.com/NikanEidi/GitVisionCLI)
+[![Version](https://img.shields.io/badge/Version-1.1.0-purple.svg)](https://github.com/NikanEidi/GitVisionCLI)
 
-1. [Workspace & Panel Commands](#workspace--panel-commands)
-2. [Natural Language Commands (Direct)](#natural-language-commands-direct)
-3. [File Operations](#file-operations)
-4. [Folder Operations](#folder-operations)
-5. [Line Editing Commands](#line-editing-commands)
-6. [Git Commands](#git-commands)
-7. [GitHub Commands](#github-commands)
-8. [AI Engine Commands](#ai-engine-commands)
-9. [Navigation & Workspace](#navigation--workspace)
-10. [Editor Commands](#editor-commands)
-11. [Multi-line Input](#multi-line-input)
-12. [Shell Commands](#shell-commands)
-13. [All Action Types](#all-action-types)
+</div>
 
 ---
 
-## 🎛️ **Workspace & Panel Commands**
+## 📑 **Quick Navigation**
 
-| Command | Description |
-|---------|-------------|
-| `:banner` | Show workspace banner with quick commands |
-| `:tree` | Show project tree explorer (file browser) |
-| `:edit <file>` | Open file in editor panel with line numbers |
-| `:markdown <file>` | Preview markdown file with rendering |
-| `:sheet` or `:commands` | Show complete command reference (this sheet) |
-| `:models` | AI Model Manager (view engines, models, API keys) |
-| `:git-graph` or `:gitgraph` | Git commit graph visualization |
-| `:live-edit <file>` | AI Live Editor Mode (edit file via AI with streaming) |
-| `:save` | Save current editor buffer to disk |
-| `:close` or `:x` | Close right panel and return to banner |
+| Section | Commands | Page |
+|---------|----------|------|
+| [Panel Commands](#-panel-commands) | `:banner`, `:tree`, `:edit`, `:sheet`, etc. | ⬇️ |
+| [File Operations](#-file-operations) | `create`, `read`, `delete`, `rename`, etc. | ⬇️ |
+| [Line Editing](#-line-editing) | `remove line`, `add line`, `replace line`, etc. | ⬇️ |
+| [Git Commands](#-git-commands) | `git init`, `git add`, `git commit`, etc. | ⬇️ |
+| [GitHub Commands](#-github-commands) | `create github repo`, `create github issue`, etc. | ⬇️ |
+| [AI Commands](#-ai-commands) | `:models`, `:set-ai`, `explain`, etc. | ⬇️ |
+| [Shell Commands](#-shell-commands) | `ls`, `cd`, `cat`, `grep`, etc. | ⬇️ |
 
 ---
 
-## 💬 **Natural Language Commands (Direct)**
+## 🎛️ **Panel Commands**
 
-**These commands work instantly without AI (via Natural Language Action Engine):**
-
-### **File Operations**
+**Control the UI and navigate between panels**
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `create file <path>` | Create new file | `create file app.py` |
-| `read file <path>` | Read/display file content | `read file app.py` |
-| `delete file <path>` | Delete file | `delete file old.py` |
-| `rename <old> to <new>` | Rename file | `rename app.py to main.py` |
-| `move <file> to <folder>` | Move file to folder | `move app.py to src/` |
-| `copy <file> to <new>` | Copy file | `copy app.py to app_backup.py` |
-| `open <file>` | Open file in editor | `open app.py` |
+| `:banner` | Show workspace banner with quick commands | `:banner` |
+| `:tree` | Open file tree browser | `:tree` |
+| `:edit <file>` | Open file in code editor | `:edit app.py` |
+| `:live-edit <file>` | AI live editor with streaming | `:live-edit app.py` |
+| `:markdown <file>` | Preview markdown file | `:markdown README.md` |
+| `:sheet` | Show complete command reference | `:sheet` |
+| `:git-graph` | Visual Git commit history | `:git-graph` |
+| `:models` | AI model manager | `:models` |
+| `:save` | Save current editor buffer | `:save` |
+| `:close` | Close current panel | `:close` |
 
-### **Folder Operations**
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `create folder <path>` | Create new folder/directory | `create folder src` |
-| `delete folder <path>` | Delete folder/directory | `delete folder old` |
-| `move folder <path> to <target>` | Move folder to new location | `move src to lib` |
-| `copy folder <path> to <new>` | Copy folder | `copy src to src_backup` |
-| `rename folder <old> to <new>` | Rename folder | `rename src to lib` |
-
-### **Line Editing** (when file is open in editor)
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `remove line 5` | Delete single line | `remove line 5` |
-| `delete line 5` | Same as remove | `delete line 5` |
-| `rm 5` | Short form (auto-fixed) | `rm 5` → `remove line 5` |
-| `delete lines 4-9` | Delete line range | `delete lines 4-9` |
-| `remove lines 4 to 9` | Same as above | `remove lines 4 to 9` |
-| `replace line 3 with <text>` | Replace line content | `replace line 3 with x = 100` |
-| `edit line 3 with <text>` | Same as replace | `edit line 3 with new code` |
-| `add <text> at line 10` | Insert after line 10 | `add print("hi") at line 10` |
-| `add <text> at bottom` | Append to end of file | `add print("end") at bottom` |
-| `insert <text> at line 5` | Insert before line 5 | `insert # comment at line 5` |
-
-**Grammar Fix:** Broken grammar is auto-fixed:
-- `line1` → `line 1`
-- `ln5` → `line 5`
-- `rm 2` → `remove line 2`
-
-### **Git Operations**
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `:git-graph` | Open Git graph panel (command) | `:git-graph` |
-| `git graph` | Open Git graph panel (natural language) | `git graph` |
-| `git init` | Initialize repository | `git init` |
-| `git add <files>` | Stage files | `git add .` or `git add app.py` |
-| `git commit 'message'` | Commit with message | `git commit "Initial commit"` |
-| `git branch <name>` | Create new branch | `git branch feature` |
-| `git checkout <branch>` | Switch to branch | `git checkout main` |
-| `go to <branch>` | Same as checkout | `go to main` |
-| `git merge <branch>` | Merge branch | `git merge feature` |
-
-### **GitHub Operations**
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `create github repo <name>` | Create GitHub repository | `create github repo my-app` |
-| `create github repo <name> private` | Create private repo | `create github repo my-app private` |
-| `create github issue 'title'` | Create GitHub issue | `create github issue "Bug fix"` |
-| `create github pr 'title'` | Create pull request | `create github pr "New feature"` |
-
-### **Directory Navigation**
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `cd <path>` | Change directory | `cd src` |
-| `cd ..` | Go up one directory | `cd ..` |
-| `pwd` | Show current directory | `pwd` |
-| `create folder X and go to it` | Create folder + change directory | `create folder demo and go to it` |
+**Usage:**
+```bash
+:banner          # Show quick commands
+:tree            # Browse project files
+:edit app.py     # Open in editor
+:git-graph       # View commits
+:models          # Manage AI
+:close           # Close panel
+```
 
 ---
 
@@ -125,15 +60,27 @@
 
 **Single line:**
 ```bash
+create file <name> with <content>
 create a file called <name> with <content>
 ```
 
-**Example:**
+**Examples:**
 ```bash
-create a file called hello.py with print("Hello World!")
+create file app.py with print("Hello World!")
+create a file called config.json with {"key": "value"}
 ```
 
-**Multiline (use `:ml`):**
+**Multiline (use `:ml` mode):**
+```bash
+:ml
+create a file called <name> with
+<line 1>
+<line 2>
+<more lines>
+:end
+```
+
+**Example:**
 ```bash
 :ml
 create a file called app.py with
@@ -148,120 +95,165 @@ if __name__ == "__main__":
 ### **Read Files**
 
 ```bash
-read file <path>
+read file <name>
+read <name>
+open <name>
+```
+
+**Examples:**
+```bash
 read file app.py
-read file src/utils.py
+read config.json
+open README.md
 ```
 
 ### **Delete Files**
 
 ```bash
-delete file <path>
+delete file <name>
+remove file <name>
+erase <name>
+trash <name>
+```
+
+**Examples:**
+```bash
 delete file old.py
+remove file temp.txt
+erase backup.py
 ```
 
 ### **Rename Files**
 
 ```bash
 rename <old> to <new>
+rename file <old> to <new>
+```
+
+**Examples:**
+```bash
 rename app.py to main.py
+rename file old.txt to new.txt
 ```
 
 ### **Move Files**
 
 ```bash
 move <file> to <folder>
+move file <file> to <folder>
+```
+
+**Examples:**
+```bash
 move app.py to src/
+move file config.json to config/
 ```
 
 ### **Copy Files**
 
 ```bash
 copy <file> to <new>
+copy file <file> to <new>
+```
+
+**Examples:**
+```bash
 copy app.py to app_backup.py
+copy file config.json to config_backup.json
 ```
 
 ---
 
 ## 📂 **Folder Operations**
 
-### **Create Folders**
+| Command | Description | Example |
+|---------|-------------|---------|
+| `create folder <name>` | Create directory | `create folder src` |
+| `delete folder <name>` | Delete directory | `delete folder old` |
+| `rename folder <old> to <new>` | Rename folder | `rename src to lib` |
+| `move folder <path> to <target>` | Move folder | `move src to lib` |
+| `copy folder <path> to <new>` | Copy folder | `copy src to src_backup` |
 
+**Examples:**
 ```bash
-create folder <path>
 create folder src
 create folder tests/unit
-```
-
-### **Delete Folders**
-
-```bash
-delete folder <path>
 delete folder old
-```
-
-### **Move Folders**
-
-```bash
-move folder <path> to <target>
-move folder src to lib
-```
-
-### **Copy Folders**
-
-```bash
-copy folder <path> to <new>
-copy folder src to src_backup
-```
-
-### **Rename Folders**
-
-```bash
-rename folder <old> to <new>
 rename folder src to lib
+move folder src to lib
+copy folder src to src_backup
 ```
 
 ---
 
-## ✏️ **Line Editing Commands**
+## ✏️ **Line Editing**
 
-**These work when a file is open in the editor (`:edit <file>`):**
+**⚠️ Prerequisite:** Open file first with `:edit <filename>`
 
 ### **Delete Lines**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `remove line N` | Delete line N | `remove line 5` |
+| `delete line N` | Delete line N | `delete line 10` |
+| `rm N` | Short form | `rm 5` |
+| `delete lines N-M` | Delete range | `delete lines 5-10` |
+| `remove lines N to M` | Delete range | `remove lines 3 to 7` |
+| `delete lines N through M` | Delete range | `delete lines 2 through 8` |
+
+**Examples:**
 ```bash
-remove line 5          # Delete line 5
-delete line 5          # Same as above
-rm 5                   # Short form (auto-fixed)
-delete lines 4-9       # Delete range
-remove lines 4 to 9    # Same as above
+:edit app.py
+remove line 5
+delete line 10
+rm 3                    # Short form
+delete lines 5-10
+remove lines 3 to 7
 ```
 
 ### **Insert Lines**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `add <text> at line N` | Insert after line N | `add print("hi") at line 10` |
+| `insert <text> at line N` | Insert before line N | `insert import os at line 1` |
+| `add line N with <text>` | Insert before line N | `add line 1 with # comment` |
+| `insert line N with <text>` | Insert before line N | `insert line 5 with x = 42` |
+| `add <text> at top` | Insert at beginning | `add # -*- coding: utf-8 -*- at top` |
+| `add <text> at bottom` | Append to end | `add print("end") at bottom` |
+
+**Examples:**
 ```bash
-add <text> at line 10      # Insert after line 10
-insert <text> at line 5    # Insert before line 5
-add <text> at bottom        # Append to end
-add <text> at top           # Insert at beginning
+:edit app.py
+add # comment at line 1
+insert import os at line 1
+add line 5 with x = 42
+add print("test") at bottom
 ```
 
 ### **Replace Lines**
 
-```bash
-replace line 3 with <text>
-edit line 3 with <text>
-```
+| Command | Description | Example |
+|---------|-------------|---------|
+| `replace line N with <text>` | Replace line N | `replace line 3 with x = 100` |
+| `edit line N with <text>` | Replace line N | `edit line 3 with new code` |
+| `update line N with <text>` | Replace line N | `update line 4 with data = []` |
 
-### **Examples**
-
+**Examples:**
 ```bash
 :edit app.py
-remove line 1
-add # -*- coding: utf-8 -*- at line 1
-replace line 5 with print("Updated!")
-add print("End") at bottom
+replace line 3 with x = 100
+edit line 2 with print("Updated!")
+update line 4 with data = []
 ```
+
+### **Grammar Auto-Fix**
+
+Broken grammar is automatically fixed:
+- `line1` → `line 1`
+- `ln5` → `line 5`
+- `rm 2` → `remove line 2`
+- `delete ln3-7` → `delete lines 3-7`
 
 ---
 
@@ -269,95 +261,149 @@ add print("End") at bottom
 
 ### **Repository Management**
 
-```bash
-git init                    # Initialize repository
-git status                  # View status (via AI)
-git log                     # View history (via AI)
-```
+| Command | Description | Example |
+|---------|-------------|---------|
+| `git init` | Initialize repository | `git init` |
+| `git status` | Show status | `git status` |
+| `git log` | Show commit history | `git log` |
 
 ### **Staging & Committing**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `git add <files>` | Stage files | `git add app.py` |
+| `git add .` | Stage all files | `git add .` |
+| `git commit "message"` | Commit changes | `git commit "Initial commit"` |
+| `git commit -m "message"` | Commit with message | `git commit -m "Fix bug"` |
+
+**Examples:**
 ```bash
-git add <files>             # Stage files
-git add .                   # Stage all files
-git commit 'message'        # Commit with message
-git commit "Initial commit" # Example
+git init
+git add .
+git commit "Initial commit"
+git add app.py
+git commit "Add app.py"
 ```
 
 ### **Branching**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `git branch <name>` | Create branch | `git branch feature` |
+| `git checkout <branch>` | Switch branch | `git checkout main` |
+| `git checkout -b <branch>` | Create and switch | `git checkout -b feature` |
+| `go to <branch>` | Switch branch (NL) | `go to main` |
+| `git merge <branch>` | Merge branch | `git merge feature` |
+
+**Examples:**
 ```bash
-git branch <name>           # Create branch
-git branch feature          # Example
-git checkout <branch>       # Switch branch
-git checkout main           # Example
-go to <branch>              # Alternative syntax
-git merge <branch>          # Merge branch
+git branch feature
+git checkout feature
+git checkout -b hotfix
+go to main
+git merge feature
 ```
 
 ### **Remote Operations**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `git push` | Push to remote | `git push` |
+| `git push origin main` | Push to specific remote/branch | `git push origin main` |
+| `git push -u origin main` | Push and set upstream | `git push -u origin main` |
+| `git pull` | Pull from remote | `git pull` |
+| `git pull origin main` | Pull from specific remote/branch | `git pull origin main` |
+| `git remote add <name> <url>` | Add remote | `git remote add origin https://...` |
+
+**Examples:**
 ```bash
-git push                    # Push to remote (via AI)
-git pull                    # Pull from remote (via AI)
-git remote add <name> <url> # Add remote (via AI)
+git remote add origin https://github.com/user/repo.git
+git push -u origin main
+git pull origin main
 ```
 
 ### **Visualization**
 
-```bash
-:git-graph                  # Open Git graph panel
-git graph                   # Same (natural language)
-```
+| Command | Description | Example |
+|---------|-------------|---------|
+| `:git-graph` | Open Git graph panel | `:git-graph` |
+| `git graph` | Open Git graph (NL) | `git graph` |
 
 ---
 
-## 🌐 **GitHub Commands**
+## 🐙 **GitHub Commands**
 
-**Requires `GITHUB_TOKEN` environment variable:**
-
-```bash
-export GITHUB_TOKEN="ghp_..."
-```
+**⚠️ Requires:** `GITHUB_TOKEN` environment variable
 
 ### **Repository Management**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `create github repo <name>` | Create public repo | `create github repo my-app` |
+| `create github repo <name> --private` | Create private repo | `create github repo my-app --private` |
+| `create github repo <name> private` | Create private repo | `create github repo my-app private` |
+
+**Examples:**
 ```bash
-create github repo <name>           # Create public repo
-create github repo <name> private   # Create private repo
-create github repo my-app           # Example
-delete github repo <name>           # Delete repo (via AI)
+create github repo my-project
+create github repo my-project --private
+create github repo my-project private
 ```
 
 ### **Issues & Pull Requests**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `create github issue "title"` | Create issue | `create github issue "Bug fix"` |
+| `create github issue "title" --body "desc"` | Create issue with body | `create github issue "Bug" --body "Description"` |
+| `create github pr "title"` | Create pull request | `create github pr "New feature"` |
+
+**Examples:**
 ```bash
-create github issue 'title'         # Create issue
-create github issue "Bug fix"       # Example
-create github pr 'title'            # Create pull request
-create github pr "New feature"      # Example
+create github issue "Fix bug in login"
+create github issue "Enhancement" --body "Add new feature"
+create github pr "Add authentication"
 ```
 
 ---
 
-## 🤖 **AI Engine Commands**
+## 🤖 **AI Commands**
 
 ### **Model Management**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `:models` | Show all available models | `:models` |
+| `:set-ai <model>` | Switch AI model | `:set-ai gpt-4o-mini` |
+| `stats` | Show current model stats | `stats` |
+
+**Available Models:**
 ```bash
-:models                    # View all available models
-:set-ai <model>            # Switch AI model
-stats                      # Show current model and stats
+:set-ai gpt-4o-mini        # OpenAI GPT-4o Mini
+:set-ai gpt-4o             # OpenAI GPT-4o
+:set-ai gemini-1.5-pro     # Google Gemini 1.5 Pro
+:set-ai claude-3.5-sonnet  # Anthropic Claude 3.5 Sonnet
+:set-ai ollama/llama2      # Ollama (local)
 ```
 
-### **Model Examples**
+### **AI Interactions**
 
+| Command | Description | Example |
+|---------|-------------|---------|
+| `explain <file>` | Explain code | `explain app.py` |
+| `analyze this code` | Analyze current code | `analyze this code` |
+| `find bugs` | Find bugs | `find bugs` |
+| `refactor this` | Refactor code | `refactor this` |
+| `optimize this code` | Optimize code | `optimize this code` |
+| `create test for <file>` | Generate tests | `create test for app.py` |
+
+**Examples:**
 ```bash
-:set-ai gpt-4o-mini
-:set-ai gpt-4o
-:set-ai gemini-1.5-pro
-:set-ai claude-3.5-sonnet
-:set-ai ollama/llama2
+explain app.py
+how can I improve this code?
+find bugs in this file
+refactor this function
+create a test file for app.py
 ```
 
 ### **Ollama Commands** (Local AI)
@@ -370,37 +416,62 @@ ollama pull llama2         # Example
 
 ---
 
-## 🧭 **Navigation & Workspace**
+## 🐚 **Shell Commands**
 
-| Command | Description |
-|---------|-------------|
-| `cd <path>` | Change directory |
-| `cd ..` | Go up one directory |
-| `pwd` | Print current working directory |
-| `clear` | Clear console screen |
-| `stats` | Show workspace statistics |
-| `exit` or `quit` | Exit GitVisionCLI |
+**All standard shell commands are fully supported!**
 
----
+### **Navigation**
 
-## 📝 **Editor Commands**
+```bash
+pwd                    # Print working directory
+cd <path>              # Change directory
+cd ..                  # Go up one level
+```
 
-### **Editor Scrolling** (when in editor mode)
+### **File Operations**
 
-| Command | Description |
-|---------|-------------|
-| `:up` or `:scroll-up` | Scroll editor view up |
-| `:down` or `:scroll-down` | Scroll editor view down |
-| `:pageup` or `:pu` | Scroll editor one page up |
-| `:pagedown` or `:pd` | Scroll editor one page down |
+```bash
+ls                     # List files
+ll                     # List files (long)
+cat <file>             # View file
+head <file>            # View first lines
+tail <file>            # View last lines
+touch <file>           # Create empty file
+mkdir <dir>            # Create directory
+rm <file>              # Delete file
+cp <src> <dst>         # Copy file
+mv <src> <dst>         # Move file
+```
 
-### **Editor Features**
+### **Search & Find**
 
-- **Line Numbers**: Automatically displayed
-- **Auto-save**: Changes sync to UI when saved
-- **Live Streaming**: AI text streams token-by-token
-- **Grammar Fix**: Broken grammar auto-fixed
-- **No Questions**: AI never asks questions when file is open
+```bash
+grep <pattern> <file>  # Search in file
+find <name>            # Find files
+search for <text>      # Search (NL)
+find files named <name> # Find files (NL)
+```
+
+### **Text Processing**
+
+```bash
+grep <pattern>         # Search text
+sed <command>          # Stream editor
+awk <script>           # Text processing
+sort                   # Sort lines
+wc                     # Word count
+cut                    # Cut columns
+```
+
+### **System**
+
+```bash
+whoami                 # Current user
+uname                  # System info
+date                   # Current date
+ps                     # Process list
+top                    # Process monitor
+```
 
 ---
 
@@ -430,7 +501,7 @@ if __name__ == "__main__":
 
 ### **Fenced Code Blocks**
 
-You can also paste code blocks directly:
+You can paste code blocks directly:
 
 ````bash
 ```python
@@ -440,127 +511,6 @@ def hello():
 ````
 
 These are automatically treated as single messages.
-
----
-
-## 💻 **Shell Commands**
-
-### **Shell Prefix Modes** (Cross-OS)
-
-| Prefix | Mode | Example |
-|--------|------|---------|
-| `p.*` | PowerShell | `p.get-process`, `p.dir` |
-| `c.*` | Windows CMD | `c.dir`, `c.echo hello` |
-| `l.*` | Linux bash | `l.ls`, `l.cat file` |
-| `m.*` | macOS zsh | `m.open`, `m.say` |
-| `.<cmd>` | Local shell | `.ls`, `.git status` |
-
-### **Local Shell Shortcuts**
-
-| Command | Description |
-|---------|-------------|
-| `pwd` | Print working directory |
-| `ls` or `ll` | Directory listing |
-| `whoami` | Show current user |
-| `cat <file>` | Display file content |
-| `tree` | Directory tree |
-| `mkdir <dir>` | Create directory |
-| `rmdir <dir>` | Remove directory |
-| `rm <file>` | Remove file |
-| `touch <file>` | Create empty file |
-
----
-
-## 🔧 **All Action Types**
-
-**All supported action types (50+ actions):**
-
-### **Filesystem Actions**
-
-| Action | Category | Description |
-|--------|----------|-------------|
-| `CreateFile` | Filesystem | Create new file |
-| `EditFile` | Filesystem | Edit existing file |
-| `ReadFile` | Other | Read file content |
-| `DeleteFile` | Filesystem | Delete file |
-| `MoveFile` | Filesystem | Move file |
-| `CopyFile` | Filesystem | Copy file |
-| `RenameFile` | Filesystem | Rename file |
-| `CreateFolder` | Filesystem | Create folder |
-| `DeleteFolder` | Filesystem | Delete folder |
-| `MoveFolder` | Filesystem | Move folder |
-| `CopyFolder` | Filesystem | Copy folder |
-
-### **AI Text/Edit Actions**
-
-| Action | Category | Description |
-|--------|----------|-------------|
-| `AppendText` | AI Text/Edit | Append text to file |
-| `PrependText` | AI Text/Edit | Prepend text to file |
-| `ReplaceText` | AI Text/Edit | Replace text in file |
-| `InsertBeforeLine` | AI Text/Edit | Insert before line |
-| `InsertAfterLine` | AI Text/Edit | Insert after line |
-| `DeleteLineRange` | Filesystem | Delete line range |
-| `RewriteEntireFile` | AI Text/Edit | Rewrite entire file |
-| `ApplyPatch` | AI Text/Edit | Apply patch to file |
-
-### **Advanced Text Actions**
-
-| Action | Category | Description |
-|--------|----------|-------------|
-| `ReplaceByPattern` | Other | Replace by regex pattern |
-| `DeleteByPattern` | Filesystem | Delete by pattern |
-| `ReplaceByFuzzyMatch` | Other | Replace by fuzzy match |
-| `InsertAtTop` | Other | Insert at top of file |
-| `InsertAtBottom` | Other | Insert at bottom |
-| `InsertBlockAtLine` | Other | Insert block at line |
-| `ReplaceBlock` | Other | Replace block |
-| `RemoveBlock` | Other | Remove block |
-| `UpdateJSONKey` | Other | Update JSON key |
-| `UpdateYAMLKey` | Other | Update YAML key |
-| `InsertIntoFunction` | Other | Insert into function |
-| `InsertIntoClass` | Other | Insert into class |
-| `AddDecorator` | Other | Add decorator |
-| `AddImport` | Other | Add import |
-
-### **Git Actions**
-
-| Action | Category | Description |
-|--------|----------|-------------|
-| `RunGitCommand` | Other | Run arbitrary git command |
-| `GitInit` | Git | Initialize repository |
-| `GitAdd` | Git | Stage files |
-| `GitCommit` | Git | Commit changes |
-| `GitPush` | Git | Push to remote |
-| `GitPull` | Git | Pull from remote |
-| `GitBranch` | Git | Create/manage branches |
-| `GitCheckout` | Git | Switch branch |
-| `GitMerge` | Git | Merge branch |
-| `GitRemote` | Git | Manage remotes |
-
-### **GitHub Actions**
-
-| Action | Category | Description |
-|--------|----------|-------------|
-| `GitHubCreateRepo` | GitHub | Create repository |
-| `GitHubDeleteRepo` | GitHub | Delete repository |
-| `GitHubPushPath` | GitHub | Push path to GitHub |
-| `GitHubCreateIssue` | GitHub | Create issue |
-| `GitHubCreatePR` | GitHub | Create pull request |
-
-### **Other Actions**
-
-| Action | Category | Description |
-|--------|----------|-------------|
-| `SearchFiles` | Other | Search files |
-| `FindReplace` | Other | Find and replace |
-| `GenerateProjectStructure` | Other | Generate project structure |
-| `ScaffoldModule` | Other | Scaffold module |
-| `RunShellCommand` | Other | Run shell command |
-| `RunTests` | Other | Run tests |
-| `BuildProject` | Other | Build project |
-| `BatchOperation` | Other | Batch operation |
-| `AtomicOperation` | Other | Atomic operation |
 
 ---
 
@@ -575,26 +525,98 @@ These are automatically treated as single messages.
 
 ---
 
-## 🎯 **Quick Tips**
+## 🎯 **Quick Reference**
+
+### **Most Used Commands**
+
+```bash
+# Launch
+gitvision
+
+# Panels
+:banner          # Quick commands
+:tree            # File browser
+:edit <file>     # Code editor
+:git-graph       # Git visualization
+:models          # AI manager
+
+# File Ops
+create file <name> with <content>
+read file <name>
+delete file <name>
+
+# Line Editing (after :edit)
+remove line N
+add <text> at line N
+replace line N with <text>
+
+# Git
+git init
+git add .
+git commit "message"
+git push
+
+# GitHub
+create github repo <name> --private
+```
+
+---
+
+## 📚 **Complete Action Types**
+
+GitVisionCLI supports **50+ action types**:
+
+### **Filesystem Actions**
+- `CreateFile`, `ReadFile`, `DeleteFile`
+- `RenameFile`, `MoveFile`, `CopyFile`
+- `CreateFolder`, `DeleteFolder`, `MoveFolder`, `CopyFolder`
+
+### **Line Operations**
+- `InsertBeforeLine`, `InsertAfterLine`
+- `ReplaceLine`, `DeleteLineRange`
+- `InsertAtTop`, `InsertAtBottom`
+- `AppendText`, `PrependText`
+
+### **Git Actions**
+- `GitInit`, `GitAdd`, `GitCommit`
+- `GitPush`, `GitPull`
+- `GitBranch`, `GitCheckout`, `GitMerge`
+- `GitRemote`
+
+### **GitHub Actions**
+- `GitHubCreateRepo`, `GitHubDeleteRepo`
+- `GitHubCreateIssue`, `GitHubCreatePR`
+
+### **Advanced Actions**
+- `ReplaceByPattern`, `DeleteByPattern`
+- `ReplaceBlock`, `InsertBlock`, `RemoveBlock`
+- `UpdateJSONKey`, `UpdateYAMLKey`
+- `InsertIntoFunction`, `InsertIntoClass`
+- `AddDecorator`, `AddImport`
+
+---
+
+## 💡 **Tips & Tricks**
 
 1. **No Clarification Questions**: When a file is open, AI never asks "which file?"
 2. **Grammar Auto-Fix**: Broken grammar is automatically fixed (`line1` → `line 1`)
 3. **Streaming Writes**: AI text streams token-by-token into editor
 4. **Multi-line Input**: Use `:ml` for multi-line content
-5. **Environment Variables**: API keys can be set via environment variables
-6. **Direct Actions**: Many commands work instantly without AI
+5. **Context-Aware**: Remembers open files, project structure, recent edits
+6. **Natural Language**: Speak naturally, GitVision understands
 
 ---
 
-## 📚 **More Documentation**
+## 🔗 **More Documentation**
 
-- [README.md](README.md) - Main project documentation
-- [QUICKSTART.md](docs/QUICKSTART.md) - Quick start guide
-- [FEATURES.md](docs/FEATURES.md) - Feature overview
-- [RUN_AND_TEST.md](RUN_AND_TEST.md) - Testing guide
+- **[README.md](README.md)** - Main project documentation
+- **[QUICKSTART.md](docs/QUICKSTART.md)** - Quick start guide
+- **[COMMANDS.md](docs/COMMANDS.md)** - Detailed command docs
+- **[FEATURES.md](docs/FEATURES.md)** - Feature overview
+- **[RUN_AND_TEST.md](docs/RUN_AND_TEST.md)** - Testing guide
 
 ---
 
 **Last Updated**: 2024-12-XX  
-**Version**: 1.0.0
+**Version**: 1.1.0
 

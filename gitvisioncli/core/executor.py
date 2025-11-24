@@ -81,6 +81,9 @@ def normalize_action_type(raw_type: Any) -> Optional[ActionType]:
         return ActionType.INSERT_BLOCK_AT_LINE
     if cleaned in {"removeblock"}:
         return ActionType.REMOVE_BLOCK
+    # Map InsertAtLine to InsertAfterLine (most common interpretation)
+    if cleaned in {"insertatline", "insertline"}:
+        return ActionType.INSERT_AFTER_LINE
 
     if cleaned in {"insertintofunction"}:
         return ActionType.INSERT_INTO_FUNCTION
