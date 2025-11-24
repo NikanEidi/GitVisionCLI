@@ -704,7 +704,6 @@ If you find GitVisionCLI useful, please ⭐ **star the repo**!
 
 <div align="center">
 
-### **Built with ❤️ for developers who live in the terminal**
 
 [![Made with Python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Terminal Rules](https://img.shields.io/badge/Terminal-Rules-green.svg)](https://github.com)
