@@ -654,7 +654,14 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                 continue
 
             # Live model / engine switching
-            if cmd_lower.startswith(":set-ai "):
+            if cmd_lower == ":set-ai" or cmd_lower.startswith(":set-ai "):
+                # Extract model name if provided
+                if cmd_lower == ":set-ai":
+                    # User typed just :set-ai without model - show usage
+                    conversation.add_error("Usage: :set-ai <model_name>")
+                    _render_ui(renderer, conversation, engine)
+                    continue
+                
                 new_model = user_input.split(" ", 1)[1].strip()
                 if not new_model:
                     conversation.add_error("Usage: :set-ai <model_name>")
@@ -756,7 +763,8 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                 continue
 
             # --- 7. WORKSPACE COMMANDS (Right Panel) ---
-            if enable_workspace and right_panel and (not is_multiline) and user_input.startswith(":"):
+            # Skip :set-ai as it's handled above
+            if enable_workspace and right_panel and (not is_multiline) and user_input.startswith(":") and not cmd_lower.startswith(":set-ai"):
                 ok, msg = right_panel.handle_command(user_input)
                 if ok:
                     # Check for LIVE_EDIT_READY marker
@@ -821,7 +829,9 @@ async def run_chat_loop(engine: ChatEngine, enable_workspace=True):
                     }
                     parts = cmd_lower.split()
                     first_token = parts[0] if parts else ""
-                    if first_token in simple_shells:
+                    # CRITICAL: Explicitly handle git commands to ensure they route to shell
+                    # This ensures "git init", "git add", "git checkout", etc. work correctly
+                    if first_token == "git" or first_token in simple_shells:
                         shell_cmd = user_input
 
                     # Cross-OS prefix commands (p./c./l./m.) are always treated
